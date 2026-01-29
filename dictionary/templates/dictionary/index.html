@@ -140,13 +140,32 @@
       </div>
 
       <!-- Main Input Form -->
-      <form id="entryForm" class="space-y-5">
-        <div class="grid grid-cols-1 sm:grid-cols-12 gap-5">
+      <!-- Main Input Form -->
+      <form id="entryForm" class="space-y-5 relative">
+
+        <!-- AI Toggle Widget -->
+        <div class="absolute -top-0 right-0 z-10 flex items-center gap-2" title="Auto-fill with AI">
+          <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AI Mode</span>
+          <button type="button" id="aiToggleBtn"
+            class="w-10 h-6 bg-gray-200 dark:bg-gray-700 rounded-full relative transition-colors duration-300 focus:outline-none cursor-pointer">
+            <span id="aiToggleCircle"
+              class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-sm"></span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-5 pt-1">
           <div class="sm:col-span-5 space-y-2">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Слово</label>
-            <input id="wordInput" type="text" placeholder="Word"
-              class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
-              required autocomplete="off">
+            <div class="relative">
+              <input id="wordInput" type="text" placeholder="Word"
+                class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 pr-10 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
+                required autocomplete="off">
+
+              <!-- Simple AI Loader -->
+              <div id="aiLoading" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
+                <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+              </div>
+            </div>
           </div>
           <div class="sm:col-span-7 space-y-2">
             <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Перевод</label>
@@ -328,6 +347,143 @@
     const exampleInput = document.getElementById('exampleInput');
     // const posSelect = document.getElementById('posSelect'); // Removed
     const ruInput = document.getElementById('ruInput');
+
+    /* --- AI Logic Implementation --- */
+    let isAiMode = false;
+    const aiToggleBtn = document.getElementById('aiToggleBtn');
+    const aiToggleCircle = document.getElementById('aiToggleCircle');
+    const aiLoading = document.getElementById('aiLoading');
+    const submitBtn = entryForm.querySelector('button[type="submit"]'); // Define submit button dynamically
+    let aiDebounceTimer;
+
+    // Toggle Handler
+    if (aiToggleBtn) {
+      aiToggleBtn.addEventListener('click', () => {
+        isAiMode = !isAiMode;
+
+        // UI Update
+        if (isAiMode) {
+          // Active State
+          aiToggleBtn.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+          aiToggleBtn.classList.add('bg-indigo-600');
+          aiToggleCircle.classList.add('translate-x-4');
+
+          // Lock fields
+          ruInput.disabled = true;
+          ruInput.classList.add('opacity-50', 'cursor-not-allowed');
+          exampleInput.disabled = true;
+          exampleInput.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+          // Inactive State
+          aiToggleBtn.classList.add('bg-gray-200', 'dark:bg-gray-700');
+          aiToggleBtn.classList.remove('bg-indigo-600');
+          aiToggleCircle.classList.remove('translate-x-4');
+
+          // Unlock fields
+          ruInput.disabled = false;
+          ruInput.classList.remove('opacity-50', 'cursor-not-allowed');
+          exampleInput.disabled = false;
+          exampleInput.classList.remove('opacity-50', 'cursor-not-allowed');
+
+          // Re-enable submit if it was stuck
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            submitBtn.textContent = 'Добавить';
+          }
+        }
+      });
+    }
+
+    // Input Handler
+    wordInput.addEventListener('input', (e) => {
+      if (!isAiMode) return;
+
+      const text = e.target.value.trim();
+      clearTimeout(aiDebounceTimer);
+
+      if (text.length < 2) return;
+
+      // Disable add button while waiting for AI
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        submitBtn.textContent = 'Wait AI...';
+      }
+
+      aiDebounceTimer = setTimeout(() => {
+        fetchAiData(text);
+      }, 1100);
+    });
+
+    async function fetchAiData(word) {
+      aiLoading.classList.remove('hidden');
+
+      try {
+        const response = await fetch('/api/ai-lookup/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+          },
+          body: JSON.stringify({ word: word })
+        });
+
+        if (!response.ok) throw new Error('Network response was not ok');
+
+        const data = await response.json();
+
+        if (data.error) {
+          console.warn('AI Error:', data.error);
+          return;
+        }
+
+        // Fill Data
+        ruInput.value = data.translation || '';
+        exampleInput.value = data.example || '';
+
+        // Handle POS
+        if (data.pos) {
+          // Internal mapping
+          const map = { 'noun': 'noun', 'verb': 'verb', 'adj': 'adjective', 'adv': 'adverb', 'other': 'other' };
+          // Visual label mapping
+          const labelMap = {
+            'noun': 'Существительное',
+            'verb': 'Глагол',
+            'adj': 'Прилагательное',
+            'adv': 'Наречие',
+            'other': 'Другое',
+            'adjective': 'Прилагательное', // handle both cases
+            'adverb': 'Наречие'
+          };
+
+          // Set logic
+          const mappedPos = map[data.pos] || 'other';
+          selectedPosValue = mappedPos;
+
+          // Update Badge Label (UI)
+          const posLabel = document.getElementById('posLabel');
+          const visualText = labelMap[data.pos] || labelMap[mappedPos] || 'Часть речи';
+
+          if (posLabel) {
+            posLabel.textContent = visualText;
+            posLabel.classList.remove('text-gray-400');
+            posLabel.classList.add('text-gray-700', 'dark:text-gray-300');
+          }
+        }
+
+      } catch (error) {
+        console.error('AI Fetch Error:', error);
+      } finally {
+        aiLoading.classList.add('hidden');
+        // Re-enable Add button
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+          submitBtn.textContent = 'Добавить';
+        }
+      }
+    }
 
     // POS Custom Dropdown vars
     const posTrigger = document.getElementById('posTrigger');

@@ -139,3 +139,77 @@ def api_word_delete(request, pk):
     except Word.DoesNotExist:
         return JsonResponse({'error': 'Word not found'}, status=404)
 
+import os
+import requests
+
+@login_required
+@require_http_methods(["POST"])
+def api_ai_lookup(request):
+    try:
+        data = json.loads(request.body)
+        word = data.get('word', '').strip()
+        
+        if not word:
+            return JsonResponse({'error': 'Word is required'}, status=400)
+
+        # 1. Get API Key from environment
+        pplx_key = os.environ.get('PERPLEXITY_API_KEY')
+        if not pplx_key:
+             return JsonResponse({'error': 'Server config missing: API Key'}, status=500)
+             
+        # 2. Build Prompt
+        # Stronger system instruction to ensure pure JSON
+        prompt = (
+            f"Define '{word}' for a Russian speaker.\n"
+            "Return JSON ONLY with these keys:\n"
+            "- \"translation\": \"russian translation\"\n"
+            "- \"pos\": \"noun\" (or verb, adj, adv, other)\n"
+            "- \"example\": \"Short English sentence.\"\n"
+            "NO markdown formatting. NO backticks."
+        )
+
+        headers = {
+            "Authorization": f"Bearer {pplx_key}",
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "model": "sonar-pro",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a backend API. Output raw JSON only. No markdown properties."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        }
+        
+        # 3. Request
+        response = requests.post("https://api.perplexity.ai/chat/completions", json=payload, headers=headers, timeout=12)
+        
+        if response.status_code != 200:
+            return JsonResponse({'error': f'AI Provider Error: {response.text}'}, status=500)
+            
+        ai_resp = response.json()
+        content = ai_resp['choices'][0]['message']['content'].strip()
+        
+        # Cleanup: Remove markdown code blocks if they appear
+        if content.startswith("```"):
+            lines = content.split('\n')
+            # Remove first line if it's ```json and last if it's ```
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines[-1].startswith("```"): lines = lines[:-1]
+            content = "\n".join(lines)
+            
+        result = json.loads(content)
+        
+        return JsonResponse(result)
+
+    except json.JSONDecodeError:
+        print(f"AI Raw Content: {content}") # Log for debug
+        return JsonResponse({'error': 'AI Parse Error: Invalid JSON received'}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

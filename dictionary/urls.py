@@ -14,4 +14,6 @@ urlpatterns = [
     
     path('api/words/<int:pk>/update/', api.api_word_update, name='api_word_update'),
     path('api/words/<int:pk>/delete/', api.api_word_delete, name='api_word_delete'),
+    
+    path('api/ai-lookup/', api.api_ai_lookup, name='api_ai_lookup'),
 ]
