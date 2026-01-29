@@ -16,16 +16,20 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+import os
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#(vqwxghu-knbpr8r1u7^3ni6-q@uv0_c17i1qa5rh&o@&&(ly'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-#(vqwxghu-knbpr8r1u7^3ni6-q@uv0_c17i1qa5rh&o@&&(ly')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
+
+CSRF_TRUSTED_ORIGINS = ['https://ai-dictionary.dev', 'https://www.ai-dictionary.dev']
 
 
 # Application definition
