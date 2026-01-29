@@ -1,0 +1,97 @@
+{% extends 'dictionary/base.html' %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center w-full">
+    <div
+        class="w-full bg-white dark:bg-gray-900 rounded-3xl p-8 shadow-xl shadow-gray-200/50 dark:shadow-none border border-white dark:border-gray-800">
+        <h2 class="mb-8 text-center text-3xl font-bold tracking-tight">Вход</h2>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            {% if form.errors %}
+            <div
+                class="rounded-2xl bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-600 dark:text-red-400 font-medium text-center">
+                Неверное имя пользователя или пароль.
+            </div>
+            {% endif %}
+
+            <div class="space-y-2">
+                <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Имя пользователя</label>
+                <input type="text" name="username"
+                    class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
+                    placeholder="Username" required autofocus>
+            </div>
+
+            <div class="space-y-2">
+                <div class="flex justify-between items-center">
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Пароль</label>
+                    <button type="button" onclick="document.getElementById('supportInfo').classList.toggle('hidden')"
+                        class="text-xs font-bold text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors focus:outline-none">
+                        Забыли пароль?
+                    </button>
+                </div>
+                <div class="relative">
+                    <input type="password" name="password" id="loginPassword"
+                        class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 pr-12 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
+                        placeholder="Password" required>
+                    <button type="button" onclick="togglePassword('loginPassword', this)"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none p-1 transition-colors">
+                        <!-- Eye Icon (Show) -->
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="w-6 h-6 eye-show">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <!-- Eye Slash Icon (Hide) -->
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                            stroke="currentColor" class="w-6 h-6 eye-hide hidden">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Support Info (Hidden by default) -->
+                <div id="supportInfo" class="hidden pt-2">
+                    <div
+                        class="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-center">
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">Для сброса пароля свяжитесь с
+                            администратором:</p>
+                        <a href="https://azzim.me" target="_blank"
+                            class="text-base font-bold text-gray-900 dark:text-white underline">azzim.me</a>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit"
+                class="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold px-8 py-4 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-gray-200 dark:shadow-none mt-4">
+                Войти
+            </button>
+        </form>
+
+        <p class="mt-8 text-center text-gray-500 dark:text-gray-400">
+            Нет аккаунта? <a href="{% url 'signup' %}"
+                class="font-bold text-gray-900 dark:text-white hover:underline">Создать</a>
+        </p>
+    </div>
+</div>
+<script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        const iconShow = btn.querySelector('.eye-show');
+        const iconHide = btn.querySelector('.eye-hide');
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            iconShow.classList.add('hidden');
+            iconHide.classList.remove('hidden');
+        } else {
+            input.type = 'password';
+            iconShow.classList.remove('hidden');
+            iconHide.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}

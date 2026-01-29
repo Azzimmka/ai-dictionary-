@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Мой словарь</title>
+  {% load static %}
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            gray: {
+              850: '#1f2937',
+              900: '#111827',
+              950: '#030712'
+            }
+          },
+          borderRadius: {
+            'xl': '1rem',
+            '2xl': '1.5rem',
+            '3xl': '2rem',
+          }
+        }
+      }
+    }
+
+    // Init Theme: Default Light, check LocalStorage
+    if (localStorage.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for subtle look */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: #e5e7eb;
+      border-radius: 20px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background-color: #374151;
+    }
+  </style>
+</head>
+
+<body
+  class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans"
+  id="rootBody">
+
+  <div class="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+    <!-- Header -->
+    <header class="mb-10 flex flex-row sm:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-4">
+        <div
+          class="h-14 w-14 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+          <img src="{% static 'dictionary/logo.svg' %}" alt="Logo" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight">Мой словарь</h1>
+          {% if user.is_authenticated %}
+          <div class="flex items-center gap-2 text-xs text-gray-500 font-medium mt-1">
+            <span>{{ user.username }}</span>
+            <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+            <form action="{% url 'logout' %}" method="post" class="inline">
+              {% csrf_token %}
+              <button type="submit" class="text-red-400 hover:text-red-300   transition-colors">Выйти</button>
+            </form>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button id="darkModeBtn"
+          class="h-10 w-10 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-center transition-all shadow-sm active:scale-95">
+          <img src="{% static 'dictionary/moon.svg' %}" class="w-5 h-5 dark:hidden" alt="Dark">
+          <img src="{% static 'dictionary/icons8-sun.svg' %}" class="w-8 h-8 hidden dark:block"
+            style="filter: invert(1);" alt="Light">
+        </button>
+      </div>
+    </header>
+
+    <!-- Toolbar / Input Section -->
+    <section
+      class="bg-white dark:bg-gray-900 rounded-3xl shadow-xl shadow-gray-200/50 dark:shadow-none border border-white dark:border-gray-800 p-6 sm:p-8 mb-8 relative z-10">
+
+      <!-- Top controls -->
+      <div class="flex flex-row justify-between items-center mb-8 gap-4">
+        <div class="relative w-full sm:w-auto" id="customCategoryDropdown">
+          <button id="categoryTrigger"
+            class="flex items-center justify-between w-full sm:w-56 bg-gray-50 dark:bg-gray-800 rounded-2xl py-3 pl-5 pr-4 font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 transition-all active:scale-95">
+            <span id="categoryLabel" class="truncate">Все слова</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round" class="ml-3 text-gray-400">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          <div id="categoryList"
+            class="hidden absolute top-full left-0 mt-2 w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden max-h-64 overflow-y-auto">
+            <!-- Options injected here -->
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="addCategoryBtn"
+            class="flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            title="Добавить категорию">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </button>
+          <button id="deleteCategoryBtn"
+            class="flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            title="Удалить категорию">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Input Form -->
+      <form id="entryForm" class="space-y-5">
+        <div class="grid grid-cols-1 sm:grid-cols-12 gap-5">
+          <div class="sm:col-span-5 space-y-2">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Слово</label>
+            <input id="wordInput" type="text" placeholder="Word"
+              class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
+              required autocomplete="off">
+          </div>
+          <div class="sm:col-span-7 space-y-2">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Перевод</label>
+            <input id="ruInput" type="text" placeholder="Translation"
+              class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Пример</label>
+            <input id="exampleInput" type="text" placeholder="Example sentence..."
+              class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-3 text-sm placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow">
+          </div>
+          <div class="space-y-2">
+            <label class="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Часть речи</label>
+            <div class="relative">
+              <div class="relative w-full" id="posDropdown">
+                <button type="button" id="posTrigger"
+                  class="flex items-center justify-between w-full bg-gray-50 dark:bg-gray-800 rounded-2xl px-5 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 transition-all active:scale-95">
+                  <span id="posLabel" class="truncate text-gray-400">— Выбрать —</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                    stroke-linecap="round" stroke-linejoin="round" class="ml-3 text-gray-400">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
+
+                <div id="posList"
+                  class="hidden absolute top-full left-0 mt-2 w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 z-50 overflow-hidden max-h-64 overflow-y-auto">
+                  <!-- POS Options injected via JS -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 flex items-center justify-between">
+          <div class="text-xs text-gray-400 hidden sm:block">
+            Press <span class="font-bold text-gray-600 dark:text-gray-300">Cmd + Enter</span> to save
+          </div>
+          <button type="submit"
+            class="bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold px-8 py-4 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-gray-200 dark:shadow-none w-full sm:w-auto">
+            Добавить
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Search -->
+    <div class="mb-8 relative">
+      <input id="searchInput" type="text" placeholder="Поиск по карточкам..."
+        class="w-full bg-transparent border-b-2 border-gray-200 dark:border-gray-800 px-4 py-3 text-lg focus:border-gray-900 dark:focus:border-white focus:outline-none transition-colors placeholder-gray-400">
+      <div class="absolute right-4 top-4 text-gray-400">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Cards Columns -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+      <!-- Unlearned Column -->
+      <div class="flex flex-col gap-4 h-full">
+        <div class="flex items-center justify-between px-2">
+          <h3 class="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-gray-900 dark:bg-white"></span>
+            Изучаю
+          </h3>
+          <span id="unlearnedCount"
+            class="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">0</span>
+        </div>
+
+        <div id="unlearnedCol"
+          class="flex-1 min-h-[300px] rounded-3xl p-4 transition-all border-2 border-dashed border-gray-200 dark:border-gray-800"
+          data-dropzone="unlearned">
+          <!-- Cards go here -->
+        </div>
+        <div id="unlearnedEmpty" class="text-center py-10 text-gray-400 rounded-3xl hidden">
+          Нет слов
+        </div>
+      </div>
+
+      <!-- Learned Column -->
+      <div class="flex flex-col gap-4 h-full">
+        <div class="flex items-center justify-between px-2">
+          <h3 class="font-bold text-gray-400 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-gray-300"></span>
+            Выучено
+          </h3>
+          <span id="learnedCount"
+            class="text-xs font-bold text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg">0</span>
+        </div>
+
+        <div id="learnedCol"
+          class="flex-1 min-h-[300px] rounded-3xl p-4 transition-all border-2 border-dashed border-gray-200 dark:border-gray-800"
+          data-dropzone="learned">
+          <!-- Cards go here -->
+        </div>
+        <div id="learnedEmpty" class="text-center py-10 text-gray-400 rounded-3xl hidden">
+          Пусто
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Custom Modal -->
+  <div id="customModal"
+    class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
+    <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity opacity-0" id="modalOverlay"></div>
+    <div
+      class="bg-white dark:bg-gray-900 w-full sm:w-[450px] sm:rounded-3xl rounded-t-3xl p-6 sm:p-8 shadow-2xl transform transition-all translate-y-full sm:translate-y-10 opacity-0 pointer-events-auto"
+      id="modalPanel">
+      <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Title</h3>
+      <div id="modalContent" class="space-y-4 mb-8">
+        <!-- Content injected here -->
+      </div>
+      <div class="flex gap-3">
+        <button id="modalCancel"
+          class="flex-1 py-3.5 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Отмена</button>
+        <button id="modalConfirm"
+          class="flex-1 py-3.5 rounded-2xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold hover:bg-black dark:hover:bg-gray-200 transition-colors">ОК</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card Template -->
+  <template id="cardTemplate">
+    <article
+      class="group bg-white dark:bg-gray-900 rounded-3xl p-5 mb-4 shadow-sm border border-gray-100 dark:border-gray-800 hover:shadow-xl hover:scale-[1.01] hover:border-gray-200 dark:hover:border-gray-700 transition-all cursor-grab active:cursor-grabbing"
+      draggable="true">
+
+      <!-- Top: Content + POS -->
+      <div class="flex justify-between items-start gap-3">
+        <div class="space-y-1 pr-2">
+          <h4 class="text-xl font-bold text-gray-900 dark:text-gray-100 break-words leading-tight" data-field="word">
+          </h4>
+          <p class="text-sm text-gray-500 dark:text-gray-400 break-words italic leading-normal" data-field="example">
+          </p>
+        </div>
+        <span data-field="pos"
+          class="hidden text-[10px] font-bold uppercase tracking-wider bg-gray-100 dark:bg-gray-800 text-gray-500 px-2 py-1 rounded-lg shrink-0 h-fit"></span>
+      </div>
+
+      <!-- Bottom: Input + Actions -->
+      <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
+        <input data-field="ru" type="text"
+          class="flex-1 bg-transparent text-gray-700 dark:text-gray-300 font-medium placeholder-gray-300 focus:outline-none min-w-0"
+          placeholder="Добавить перевод...">
+
+        <!-- Actions Row -->
+        <div class="flex gap-1 shrink-0">
+          <button
+            class="speakBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            title="Слушать">🔊</button>
+          <button
+            class="editBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            title="Изменить">✏️</button>
+          <button
+            class="deleteBtn p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+            title="Удалить">🗑</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <!-- Toast -->
+  <div id="toast"
+    class="fixed top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white font-medium px-6 py-3 rounded-full shadow-xl opacity-0 pointer-events-none transition-all transform -translate-y-4 z-50">
+  </div>
+
+  <script>
+    // --- Elements ---
+    const entryForm = document.getElementById('entryForm');
+    const wordInput = document.getElementById('wordInput');
+    const exampleInput = document.getElementById('exampleInput');
+    // const posSelect = document.getElementById('posSelect'); // Removed
+    const ruInput = document.getElementById('ruInput');
+
+    // POS Custom Dropdown vars
+    const posTrigger = document.getElementById('posTrigger');
+    const posLabel = document.getElementById('posLabel');
+    const posList = document.getElementById('posList');
+    let selectedPosValue = '';
+    const searchInput = document.getElementById('searchInput');
+    const unlearnedCol = document.getElementById('unlearnedCol');
+    const learnedCol = document.getElementById('learnedCol');
+
+    // Drodown Elements
+    const categoryTrigger = document.getElementById('categoryTrigger');
+    const categoryLabel = document.getElementById('categoryLabel');
+    const categoryList = document.getElementById('categoryList');
+
+    // const categorySelect = document.getElementById('categorySelect'); // Removed
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const deleteCategoryBtn = document.getElementById('deleteCategoryBtn');
+
+    let localWords = [];
+    let localCategories = [];
+    let selectedCategoryId = null;
+
+    // API
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+
+    async function fetchWords() {
+      try {
+        const response = await fetch('/api/words/');
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        return data.words;
+      } catch { return []; }
+    }
+
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/categories/');
+        const data = await res.json();
+        return data.categories;
+      } catch { return []; }
+    }
+
+    async function initApp() {
+      const [words, cats] = await Promise.all([fetchWords(), fetchCategories()]);
+      localWords = words;
+      localCategories = cats;
+      renderCategoryOptions();
+      renderCards(localWords);
+    }
+
+    function renderCategoryOptions() {
+      categoryList.innerHTML = '';
+
+      // Helper for option item
+      const createItem = (id, name, isSelected) => {
+        const div = document.createElement('div');
+        div.className = `px-5 py-3 cursor-pointer transition-colors flex items-center justify-between group ${isSelected ? 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`;
+        div.innerHTML = `<span>${name}</span>${isSelected ? '<span class="text-blue-500">✓</span>' : ''}`;
+        div.onclick = () => selectCategory(id);
+        return div;
+      };
+
+      // "All" option
+      categoryList.appendChild(createItem(null, 'Все слова', selectedCategoryId === null));
+
+      // Categories
+      localCategories.forEach(c => {
+        categoryList.appendChild(createItem(c.id, c.name, c.id == selectedCategoryId));
+      });
+
+      // Update Button Label
+      const current = localCategories.find(c => c.id == selectedCategoryId);
+      categoryLabel.textContent = current ? current.name : 'Все слова';
+    }
+
+    function selectCategory(id) {
+      selectedCategoryId = id;
+      categoryList.classList.add('hidden');
+      renderCategoryOptions();
+      renderCards(localWords);
+    }
+
+    // Toggle Dropdown
+    categoryTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      categoryList.classList.toggle('hidden');
+    });
+
+    // Close Dropdown Outside
+    document.addEventListener('click', (e) => {
+      if (!categoryTrigger.contains(e.target) && !categoryList.contains(e.target)) {
+        categoryList.classList.add('hidden');
+      }
+    });
+
+    // Category Events
+    addCategoryBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const html = `<input id="newCatName" type="text" placeholder="Название..." class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none border border-transparent focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10">`;
+
+      modalCallback = async () => {
+        const name = document.getElementById('newCatName').value.trim();
+        if (!name) return;
+
+        try {
+          const res = await fetch('/api/categories/add/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ name })
+          });
+          if (res.ok) {
+            const newCat = await res.json();
+            localCategories.push(newCat);
+            selectedCategoryId = newCat.id;
+            renderCategoryOptions();
+            renderCards(localWords);
+            showToast('Категория создана');
+          }
+        } catch { }
+      };
+      showModal('Новая категория', html, 'Создать');
+    });
+
+    deleteCategoryBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!selectedCategoryId) return showToast('Выберите категорию');
+      openConfirmModal('Удалить категорию?', 'Внимание! Все слова в этой категории ТОЖЕ удалятся.', async () => {
+        try {
+          const idToDelete = selectedCategoryId; // Capture ID
+          await fetch(`/api/categories/${idToDelete}/delete/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') }
+          });
+
+          // Cascading delete in frontend
+          localWords = localWords.filter(w => w.category_id != idToDelete);
+          localCategories = localCategories.filter(c => c.id != idToDelete);
+
+          selectedCategoryId = null;
+          renderCategoryOptions();
+          renderCards(localWords);
+          showToast('Категория и слова удалены');
+        } catch { }
+      });
+    });
+
+    // --- POS Dropdown Logic ---
+    const posOptions = [
+      { val: '', label: '— Выбрать —' },
+      { val: 'noun', label: 'Существительное' },
+      { val: 'verb', label: 'Глагол' },
+      { val: 'adj', label: 'Прилагательное' },
+      { val: 'adv', label: 'Наречие' },
+      { val: 'phrase', label: 'Фраза' },
+      { val: 'other', label: 'Другое' },
+    ];
+
+    function renderPosOptions() {
+      posList.innerHTML = '';
+      posOptions.forEach(opt => {
+        const div = document.createElement('div');
+        const isSelected = (opt.val === selectedPosValue);
+        div.className = `px-5 py-3 cursor-pointer transition-colors flex items-center justify-between group ${isSelected ? 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`;
+        div.innerHTML = `<span>${opt.label}</span>${isSelected ? '<span class="text-blue-500">✓</span>' : ''}`;
+        div.onclick = (e) => {
+          e.stopPropagation();
+          selectedPosValue = opt.val;
+          posLabel.textContent = opt.label;
+          posLabel.classList.toggle('text-gray-400', !opt.val);
+          posList.classList.add('hidden');
+          renderPosOptions();
+        };
+        posList.appendChild(div);
+      });
+    }
+
+    // Init POS items
+    renderPosOptions();
+
+    // Toggle POS
+    posTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      posList.classList.toggle('hidden');
+      // Close other dropdown if open
+      categoryList.classList.add('hidden');
+    });
+
+    // Close Dropdowns Outside (Updated to include POS)
+    document.addEventListener('click', (e) => {
+      if (!categoryTrigger.contains(e.target) && !categoryList.contains(e.target)) {
+        categoryList.classList.add('hidden');
+      }
+      if (!posTrigger.contains(e.target) && !posList.contains(e.target)) {
+        posList.classList.add('hidden');
+      }
+    });
+
+    function updateCounters(items) {
+      const total = items.length;
+      const learned = items.filter(i => i.is_learned || i.learned).length; // Handle both DB field names consistency
+      const unlearned = total - learned;
+      document.getElementById('unlearnedCount').textContent = unlearned;
+      document.getElementById('learnedCount').textContent = learned;
+    }
+
+    function renderCards(wordsList) {
+      const query = searchInput.value.trim().toLowerCase();
+      unlearnedCol.innerHTML = '';
+      learnedCol.innerHTML = '';
+
+      const filtered = wordsList.filter(i => {
+        if (selectedCategoryId && i.category_id != selectedCategoryId) return false;
+        if (!query) return true;
+        return (
+          (i.word || '').toLowerCase().includes(query) ||
+          (i.translation || i.ru || '').toLowerCase().includes(query)
+        );
+      });
+
+      updateCounters(filtered);
+
+      const tpl = document.getElementById('cardTemplate');
+
+      // Toggle empty states
+      document.getElementById('unlearnedEmpty').classList.toggle('hidden', filtered.some(i => !(i.learned || i.is_learned)));
+      document.getElementById('learnedEmpty').classList.toggle('hidden', filtered.some(i => (i.learned || i.is_learned)));
+
+      filtered.forEach(card => {
+        const node = tpl.content.firstElementChild.cloneNode(true);
+        node.dataset.id = card.id;
+
+        // Populate fields
+        node.querySelector('[data-field="word"]').textContent = card.word;
+        node.querySelector('[data-field="example"]').textContent = card.example || '';
+        const ruField = node.querySelector('[data-field="ru"]');
+        ruField.value = card.translation || card.ru || ''; // handle both
+
+        // POS badge
+        if (card.pos && card.pos !== 'other') {
+          const badge = node.querySelector('[data-field="pos"]');
+          badge.textContent = card.pos;
+          badge.classList.remove('hidden');
+        }
+
+        // --- Logic ---
+
+        // Speech
+        const speakBtn = node.querySelector('.speakBtn');
+        speakBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const utter = new SpeechSynthesisUtterance(card.word);
+          utter.lang = 'en-US';
+          window.speechSynthesis.speak(utter);
+        });
+
+        // Edit Modal
+        node.querySelector('.editBtn').addEventListener('click', () => {
+          openEditModal(card);
+        });
+
+        // Delete Modal
+        node.querySelector('.deleteBtn').addEventListener('click', () => {
+          openConfirmModal('Удалить слово?', `Вы уверены, что хотите удалить "${card.word}"?`, async () => {
+            try {
+              await fetch(`/api/words/${card.id}/delete/`, {
+                method: 'DELETE',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') }
+              });
+              localWords = localWords.filter(x => x.id !== card.id);
+              renderCards(localWords);
+              showToast('Удалено');
+            } catch { }
+          });
+        });
+
+        // Inbox Edit Translation
+        ruField.addEventListener('change', async () => {
+          const newVal = ruField.value.trim();
+          card.translation = newVal; // update local
+          try {
+            await fetch(`/api/words/${card.id}/update/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ ru: newVal })
+            });
+          } catch { }
+        });
+
+        // Drag Start
+        node.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', card.id);
+          e.dataTransfer.effectAllowed = 'move';
+          setTimeout(() => node.classList.add('opacity-50', 'scale-95'), 0);
+        });
+
+        node.addEventListener('dragend', () => {
+          node.classList.remove('opacity-50', 'scale-95');
+        });
+
+        // Append to column
+        const isLearned = card.learned || card.is_learned;
+        (isLearned ? learnedCol : unlearnedCol).appendChild(node);
+      });
+    }
+
+    // --- Modal Logic ---
+    const modal = document.getElementById('customModal');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalPanel = document.getElementById('modalPanel');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+    const modalCancel = document.getElementById('modalCancel');
+    const modalConfirm = document.getElementById('modalConfirm');
+    let modalCallback = null;
+
+    function showModal(title, htmlContent, onConfirmText = 'ОК') {
+      modalTitle.textContent = title;
+      modalContent.innerHTML = htmlContent;
+      modalConfirm.textContent = onConfirmText;
+
+      modal.classList.remove('hidden');
+      // Animate in
+      requestAnimationFrame(() => {
+        modalOverlay.classList.remove('opacity-0');
+        modalPanel.classList.remove('opacity-0', 'translate-y-full');
+      });
+
+      // One-time listeners
+      const close = () => {
+        modalOverlay.classList.add('opacity-0');
+        modalPanel.classList.add('opacity-0', 'translate-y-full');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+        modalConfirm.onclick = null;
+      };
+
+      modalCancel.onclick = close;
+      modalConfirm.onclick = () => {
+        if (modalCallback) modalCallback();
+        close();
+      };
+    }
+
+    function openConfirmModal(title, text, action) {
+      modalCallback = action;
+      showModal(title, `<p class="text-gray-600 dark:text-gray-300 text-lg">${text}</p>`, 'Да, удалить');
+    }
+
+    function openEditModal(card) {
+      const html = `
+           <div class="space-y-4">
+               <div>
+                   <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Слово</label>
+                   <input id="editWord" type="text" value="${card.word}" class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900">
+               </div>
+               <div>
+                   <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Пример</label>
+                   <input id="editExample" type="text" value="${card.example || ''}" class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900">
+               </div>
+           </div>
+        `;
+
+      modalCallback = async () => {
+        const newWord = document.getElementById('editWord').value.trim();
+        const newEx = document.getElementById('editExample').value.trim();
+        if (!newWord) return;
+
+        // Update UI
+        card.word = newWord;
+        card.example = newEx;
+        renderCards(localWords);
+
+        // API
+        try {
+          await fetch(`/api/words/${card.id}/update/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ word: newWord, example: newEx })
+          });
+        } catch { }
+      };
+
+      showModal('Редактировать', html, 'Сохранить');
+    }
+
+    // --- Add Word ---
+    entryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const word = wordInput.value.trim();
+      if (!word) return;
+
+      const data = {
+        word: word,
+        ru: ruInput.value.trim(),
+        example: exampleInput.value.trim(),
+        pos: selectedPosValue, // Use custom value
+        category_id: selectedCategoryId
+      };
+
+      try {
+        const res = await fetch('/api/words/add/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify(data)
+        });
+        if (res.ok) {
+          const newCard = await res.json();
+          // Map API response to local format
+          localWords.unshift({
+            id: newCard.id,
+            word: newCard.word,
+            translation: newCard.translation,
+            example: data.example,
+            pos: newCard.pos,
+            learned: false,
+            category_id: selectedCategoryId // Add for immediate filtering
+          });
+          renderCards(localWords);
+          entryForm.reset();
+          // Reset custom POS
+          selectedPosValue = '';
+          posLabel.textContent = '— Выбрать —';
+          posLabel.classList.add('text-gray-400');
+          renderPosOptions();
+
+          showToast('Добавлено');
+        }
+      } catch { }
+    });
+
+    // --- Drop Zones ---
+    [unlearnedCol, learnedCol].forEach(zone => {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.remove('border-gray-200', 'dark:border-gray-800');
+        zone.classList.add('bg-gray-100', 'dark:bg-gray-800', 'border-gray-400', 'dark:border-gray-500');
+      });
+      zone.addEventListener('dragleave', (e) => {
+        zone.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'border-gray-400', 'dark:border-gray-500');
+        zone.classList.add('border-gray-200', 'dark:border-gray-800');
+      });
+      zone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        zone.classList.remove('bg-gray-100', 'dark:bg-gray-800', 'border-gray-400', 'dark:border-gray-500');
+        zone.classList.add('border-gray-200', 'dark:border-gray-800');
+        const id = parseInt(e.dataTransfer.getData('text/plain'));
+        const isLearnedTarget = (zone === learnedCol);
+
+        const card = localWords.find(c => c.id === id);
+        if (card && (card.learned || card.is_learned) !== isLearnedTarget) {
+          // Update Local
+          card.learned = isLearnedTarget;
+          card.is_learned = isLearnedTarget; // sync
+          renderCards(localWords);
+
+          // Update API
+          try {
+            await fetch(`/api/words/${id}/update/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ learned: isLearnedTarget })
+            });
+          } catch { }
+        }
+      });
+    });
+
+    // Toast Helper
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.classList.remove('opacity-0', '-translate-y-4');
+      setTimeout(() => t.classList.add('opacity-0', '-translate-y-4'), 2000);
+    }
+
+    // Search
+    searchInput.addEventListener('input', () => renderCards(localWords));
+
+    // Dark Mode Toggle
+    document.getElementById('darkModeBtn').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    });
+
+    // Init
+    initApp();
+
+  </script>
+</body>
+
+</html>

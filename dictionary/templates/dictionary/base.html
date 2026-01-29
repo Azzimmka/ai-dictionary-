@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Мой словарь</title>
+    {% load static %}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gray: {
+                            850: '#1f2937',
+                            900: '#111827',
+                            950: '#030712'
+                        }
+                    },
+                    borderRadius: {
+                        'xl': '1rem',
+                        '2xl': '1.5rem',
+                        '3xl': '2rem',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body
+    class="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 font-sans flex flex-col items-center justify-center">
+
+    <!-- Minimal Header for consistency -->
+    <div class="absolute top-6 left-6 flex items-center gap-3">
+        <div
+            class="h-10 w-10 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center">
+            <img src="{% static 'dictionary/logo.svg' %}" alt="Logo" class="w-full h-full object-contain dark:invert">
+        </div>
+        <span class="font-bold text-xl tracking-tight">Мой словарь</span>
+    </div>
+
+    <!-- Theme Toggle -->
+    <div class="absolute top-6 right-6">
+        <button id="baseDarkModeBtn"
+            class="h-10 w-10 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-center transition-all shadow-sm active:scale-95">
+            <img src="{% static 'dictionary/moon.svg' %}" class="w-5 h-5 dark:hidden" alt="Dark">
+            <img src="{% static 'dictionary/icons8-sun.svg' %}" class="w-8 h-8 hidden dark:block"
+                style="filter: invert(1);" alt="Light">
+        </button>
+    </div>
+
+    <main class="w-full max-w-md px-4 py-8">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <script>
+        // Check system preference for dark mode initially
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Toggle Logic
+        const btn = document.getElementById('baseDarkModeBtn');
+        if (btn) {
+            btn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+            });
+        }
+    </script>
+</body>
+
+</html>
