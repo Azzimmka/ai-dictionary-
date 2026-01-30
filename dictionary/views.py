@@ -17,3 +17,17 @@ def signup(request):
     else:
         form = UserCreationForm()
     return render(request, 'registration/signup.html', {'form': form})
+
+from django.http import HttpResponse
+from django.conf import settings
+import os
+
+def pwa_manifest(request):
+    path = os.path.join(settings.BASE_DIR, 'dictionary/static/dictionary/manifest.json')
+    with open(path, 'rb') as f:
+        return HttpResponse(f.read(), content_type='application/json')
+
+def pwa_sw(request):
+    path = os.path.join(settings.BASE_DIR, 'dictionary/static/dictionary/sw.js')
+    with open(path, 'rb') as f:
+        return HttpResponse(f.read(), content_type='application/javascript')
