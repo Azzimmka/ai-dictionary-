@@ -119,6 +119,17 @@
         </div>
 
         <div class="flex gap-2">
+          <!-- Toggle Form -->
+          <button id="toggleFormBtn"
+            class="flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            title="Свернуть/Развернуть форму">
+            <svg id="toggleIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <!-- Default Up (Collapse) -->
+              <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+          </button>
+
           <button id="addCategoryBtn"
             class="flex items-center justify-center w-10 h-10 rounded-2xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
             title="Добавить категорию">
@@ -1054,6 +1065,30 @@
     });
 
     // Init
+    // --- Form Visibility ---
+    const toggleFormBtn = document.getElementById('toggleFormBtn');
+    const toggleIcon = document.getElementById('toggleIcon');
+    let formVisible = localStorage.getItem('formVisible') !== 'false';
+
+    function renderFormVisibility() {
+      if (formVisible) {
+        entryForm.classList.remove('hidden');
+        if (toggleIcon) toggleIcon.innerHTML = '<polyline points="18 15 12 9 6 15"></polyline>';
+      } else {
+        entryForm.classList.add('hidden');
+        if (toggleIcon) toggleIcon.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
+      }
+      localStorage.setItem('formVisible', formVisible);
+    }
+
+    if (toggleFormBtn) {
+      renderFormVisibility();
+      toggleFormBtn.addEventListener('click', () => {
+        formVisible = !formVisible;
+        renderFormVisibility();
+      });
+    }
+
     initApp();
 
   </script>
