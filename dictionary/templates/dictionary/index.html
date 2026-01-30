@@ -66,8 +66,9 @@
     <header class="mb-10 flex flex-row sm:flex-row items-center justify-between gap-6">
       <div class="flex items-center gap-4">
         <div
-          class="h-14 w-14 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center">
-          <img src="{% static 'dictionary/logo.svg' %}" alt="Logo" class="w-full h-full object-contain">
+          class="h-14 w-14 rounded-full bg-white dark:bg-gray-800 p-3 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+          <img src="{% static 'dictionary/logo.svg' %}" alt="Logo"
+            class="w-full h-full object-contain dark:brightness-0 dark:invert">
         </div>
         <div>
           <h1 class="text-2xl font-bold tracking-tight">Мой словарь</h1>
@@ -658,6 +659,20 @@
         } catch { }
       };
       showModal('Новая категория', html, 'Создать');
+
+      // Focus & Enter Key
+      setTimeout(() => {
+        const input = document.getElementById('newCatName');
+        if (input) {
+          input.focus();
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              modalConfirm.click();
+            }
+          });
+        }
+      }, 50);
     });
 
     deleteCategoryBtn.addEventListener('click', (e) => {
@@ -1026,6 +1041,15 @@
     document.getElementById('darkModeBtn').addEventListener('click', () => {
       document.documentElement.classList.toggle('dark');
       localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    });
+
+    // --- Shortcuts ---
+    document.addEventListener('keydown', (e) => {
+      // Cmd/Ctrl + Enter to Save (Global form submit)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        entryForm.requestSubmit();
+      }
     });
 
     // Init

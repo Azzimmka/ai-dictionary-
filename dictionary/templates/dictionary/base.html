@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Мой словарь</title>
     {% load static %}
-    <link rel="icon" type="image/svg+xml" href="{% static 'dictionary/favicon.svg' %}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -37,8 +36,9 @@
     <!-- Minimal Header for consistency -->
     <div class="absolute top-6 left-6 flex items-center gap-3">
         <div
-            class="h-10 w-10 rounded-2xl bg-white dark:bg-gray-800 p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center">
-            <img src="{% static 'dictionary/logo.svg' %}" alt="Logo" class="w-full h-full object-contain dark:invert">
+            class="h-10 w-10 rounded-full bg-white dark:bg-gray-800 p-2 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+            <img src="{% static 'dictionary/logo.svg' %}" alt="Logo"
+                class="w-full h-full object-contain dark:brightness-0 dark:invert">
         </div>
         <span class="font-bold text-xl tracking-tight">Мой словарь</span>
     </div>
