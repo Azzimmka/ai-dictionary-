@@ -162,7 +162,7 @@ def api_ai_lookup(request):
         prompt = (
             f"Define '{word}' for a Russian speaker.\n"
             "Return JSON ONLY with these keys:\n"
-            "- \"translation\": \"russian translation\"\n"
+            "- \"translation\": \"russian translation (provide 2-3 common meanings if applicable, comma separated)\"\n"
             "- \"pos\": \"noun\" (or verb, adj, adv, other)\n"
             "- \"example\": \"Short English sentence.\"\n"
             "NO markdown formatting. NO backticks."

@@ -303,33 +303,53 @@
 
       <!-- Top: Content + POS -->
       <div class="flex justify-between items-start gap-3">
-        <div class="space-y-1 pr-2">
+        <div class="space-y-3 pr-2 w-full">
           <h4 class="text-xl font-bold text-gray-900 dark:text-gray-100 break-words leading-tight" data-field="word">
           </h4>
-          <p class="text-sm text-gray-500 dark:text-gray-400 break-words italic leading-normal" data-field="example">
-          </p>
+
+          <div data-section="example">
+            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Пример</div>
+            <p class="text-sm text-gray-500 dark:text-gray-400 break-words italic leading-normal" data-field="example">
+            </p>
+          </div>
         </div>
         <span data-field="pos"
           class="hidden text-[10px] font-bold uppercase tracking-wider bg-gray-100 dark:bg-gray-800 text-gray-500 px-2 py-1 rounded-lg shrink-0 h-fit"></span>
       </div>
 
       <!-- Bottom: Input + Actions -->
-      <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center gap-3">
-        <input data-field="ru" type="text"
-          class="flex-1 bg-transparent text-gray-700 dark:text-gray-300 font-medium placeholder-gray-300 focus:outline-none min-w-0"
-          placeholder="Добавить перевод...">
+      <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
+        <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Перевод</div>
+        <div class="flex items-center gap-3">
+          <div class="flex-1 relative group/input overflow-hidden">
+            <input data-field="ru" type="text"
+              class="w-full bg-transparent text-gray-700 dark:text-gray-300 font-medium placeholder-gray-300 focus:outline-none min-w-0 pr-6"
+              placeholder="Добавить перевод...">
+            <!-- Gradient Fade -->
+            <div
+              class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-gray-900 via-white/80 dark:via-gray-900/80 to-transparent pointer-events-none">
+            </div>
+          </div>
 
-        <!-- Actions Row -->
-        <div class="flex gap-1 shrink-0">
-          <button
-            class="speakBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-            title="Слушать">🔊</button>
-          <button
-            class="editBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-            title="Изменить">✏️</button>
-          <button
-            class="deleteBtn p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-            title="Удалить">🗑</button>
+          <!-- Actions Row -->
+          <div class="flex gap-1 shrink-0">
+            <button class="speakBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg group/btn transition-colors"
+              title="Слушать">
+              <img src="{% static 'dictionary/icons8-sound.svg' %}"
+                class="w-5 h-5 opacity-40 group-hover/btn:opacity-100 transition-opacity dark:invert">
+            </button>
+            <button class="editBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg group/btn transition-colors"
+              title="Изменить">
+              <img src="{% static 'dictionary/icons8-pencil.svg' %}"
+                class="w-5 h-5 opacity-40 group-hover/btn:opacity-100 transition-opacity dark:invert">
+            </button>
+            <button
+              class="deleteBtn p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg group/btn transition-colors"
+              title="Удалить">
+              <img src="{% static 'dictionary/icons8-trash.svg' %}"
+                class="w-5 h-5 opacity-40 group-hover/btn:opacity-100 transition-opacity dark:invert">
+            </button>
+          </div>
         </div>
       </div>
     </article>
@@ -749,8 +769,16 @@
         node.dataset.id = card.id;
 
         // Populate fields
+        // Populate fields
         node.querySelector('[data-field="word"]').textContent = card.word;
-        node.querySelector('[data-field="example"]').textContent = card.example || '';
+
+        const exSection = node.querySelector('[data-section="example"]');
+        if (card.example) {
+          exSection.classList.remove('hidden');
+          node.querySelector('[data-field="example"]').textContent = card.example;
+        } else {
+          exSection.classList.add('hidden');
+        }
         const ruField = node.querySelector('[data-field="ru"]');
         ruField.value = card.translation || card.ru || ''; // handle both
 
