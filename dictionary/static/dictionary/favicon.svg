@@ -1,25 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4F46E5" /> <!-- Indigo 600 -->
-      <stop offset="100%" stop-color="#9333EA" /> <!-- Purple 600 -->
-    </linearGradient>
-  </defs>
-  
-  <g>
-    <!-- Left Page -->
-    <path fill="url(#mainGrad)" d="M256 96 C 180 96, 96 128, 64 160 V 416 C 96 384, 180 352, 256 352 V 96 Z" />
-    <!-- Right Page -->
-    <path fill="url(#mainGrad)" d="M256 96 C 332 96, 416 128, 448 160 V 416 C 416 384, 332 352, 256 352 V 96 Z" opacity="0.9"/>
-  </g>
-
-  <!-- Central "spine" -->
-  <path fill="#ffffff" d="M256 120 V 380" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
-
-  <!-- AI Sparkles -->
-  <g fill="#F59E0B">
-    <circle cx="256" cy="64" r="24" />
-    <circle cx="200" cy="90" r="14" />
-    <circle cx="312" cy="90" r="14" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AI Dictionary">
+  <rect width="512" height="512" rx="128" fill="#111827"/>
+  <path
+    d="M252 174C196 148 140 154 104 180v160c36-26 92-32 148-6V174Z"
+    fill="#F9FAFB"/>
+  <path
+    d="M260 174c56-26 112-20 148 6v160c-36-26-92-32-148-6V174Z"
+    fill="#F9FAFB"
+    opacity=".9"/>
+  <path d="M256 166v180" stroke="#111827" stroke-width="14" stroke-linecap="round" opacity=".28"/>
+  <path
+    d="M256 102l13 34 35 13-35 13-13 34-13-34-35-13 35-13 13-34Z"
+    fill="#6366F1"/>
 </svg>

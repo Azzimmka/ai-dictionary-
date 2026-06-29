@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ai-dict-cache-v3';
+const CACHE_NAME = 'ai-dict-cache-v4';
 const ASSETS_TO_CACHE = [
     '/',
     '/static/dictionary/logo.svg',

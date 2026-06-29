@@ -1,39 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="mainGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4F46E5" /> <!-- Indigo 600 -->
-      <stop offset="100%" stop-color="#9333EA" /> <!-- Purple 600 -->
-    </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="15" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
-    </filter>
-  </defs>
-  
-  <!-- Background Circle (Optional, kept transparent for logo usage, but maybe a slight glow) -->
-  
-  <!-- Icon: Stylized Open Book forming a subtle 'A' or 'M' shape, with Digital Nodes -->
-  <g filter="url(#glow)">
-    <!-- Left Page -->
-    <path fill="url(#mainGrad)" d="M256 96 C 180 96, 96 128, 64 160 V 416 C 96 384, 180 352, 256 352 V 96 Z" />
-    <!-- Right Page -->
-    <path fill="url(#mainGrad)" d="M256 96 C 332 96, 416 128, 448 160 V 416 C 416 384, 332 352, 256 352 V 96 Z" opacity="0.9"/>
-  </g>
-
-  <!-- Central "spine" or AI Beam -->
-  <path fill="#ffffff" d="M256 120 V 380" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
-
-  <!-- AI Sparkles floating above -->
-  <g fill="#F59E0B"> <!-- Amber -->
-    <circle cx="256" cy="64" r="16">
-      <animate attributeName="r" values="16;20;16" dur="3s" repeatCount="indefinite" />
-      <animate attributeName="opacity" values="1;0.7;1" dur="3s" repeatCount="indefinite" />
-    </circle>
-    <circle cx="210" cy="80" r="10">
-      <animate attributeName="cy" values="80;75;80" dur="2s" repeatCount="indefinite" />
-    </circle>
-    <circle cx="302" cy="80" r="10">
-      <animate attributeName="cy" values="80;75;80" dur="2.5s" repeatCount="indefinite" />
-    </circle>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="AI Dictionary logo">
+  <rect width="512" height="512" rx="128" fill="#111827"/>
+  <path
+    d="M252 174C196 148 140 154 104 180v160c36-26 92-32 148-6V174Z"
+    fill="#F9FAFB"/>
+  <path
+    d="M260 174c56-26 112-20 148 6v160c-36-26-92-32-148-6V174Z"
+    fill="#F9FAFB"
+    opacity=".9"/>
+  <path d="M256 166v180" stroke="#111827" stroke-width="14" stroke-linecap="round" opacity=".28"/>
+  <path
+    d="M256 102l13 34 35 13-35 13-13 34-13-34-35-13 35-13 13-34Z"
+    fill="#6366F1"/>
 </svg>

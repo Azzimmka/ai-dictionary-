@@ -153,32 +153,38 @@ def api_ai_lookup(request):
             return JsonResponse({'error': 'Word is required'}, status=400)
 
         # 1. Get API Key from environment
-        pplx_key = os.environ.get('PERPLEXITY_API_KEY')
-        if not pplx_key:
-             return JsonResponse({'error': 'Server config missing: API Key'}, status=500)
+        groq_key = os.environ.get('GROQ_API_KEY')
+        if not groq_key:
+             return JsonResponse({'error': 'Server config missing: GROQ_API_KEY'}, status=500)
              
         # 2. Build Prompt
-        # Stronger system instruction to ensure pure JSON
         prompt = (
-            f"Define '{word}' for a Russian speaker.\n"
+            f"Translate and explain the English word or phrase: {word!r}.\n"
+            "Target learner language: Russian.\n"
             "Return JSON ONLY with these keys:\n"
-            "- \"translation\": \"russian translation (provide 2-3 common meanings if applicable, comma separated)\"\n"
-            "- \"pos\": \"noun\" (or verb, adj, adv, other)\n"
-            "- \"example\": \"Short English sentence.\"\n"
-            "NO markdown formatting. NO backticks."
+            "- \"translation\": Russian translation, with 2-3 common meanings if useful, comma separated.\n"
+            "- \"pos\": exactly one of: noun, verb, adj, adv, phrase, other.\n"
+            "- \"example\": one short natural English sentence using the word.\n"
+            "Do not include markdown, comments, citations, or backticks."
         )
 
         headers = {
-            "Authorization": f"Bearer {pplx_key}",
+            "Authorization": f"Bearer {groq_key}",
             "Content-Type": "application/json"
         }
         
         payload = {
-            "model": "sonar-pro",
+            "model": "llama-3.3-70b-versatile",
+            "temperature": 0.2,
+            "response_format": {"type": "json_object"},
             "messages": [
                 {
                     "role": "system",
-                    "content": "You are a backend API. Output raw JSON only. No markdown properties."
+                    "content": (
+                        "You are a precise dictionary API for Russian-speaking English learners. "
+                        "Return a single raw JSON object only. The pos value must be one of: "
+                        "noun, verb, adj, adv, phrase, other."
+                    )
                 },
                 {
                     "role": "user",
@@ -188,7 +194,7 @@ def api_ai_lookup(request):
         }
         
         # 3. Request
-        response = requests.post("https://api.perplexity.ai/chat/completions", json=payload, headers=headers, timeout=12)
+        response = requests.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=12)
         
         if response.status_code != 200:
             return JsonResponse({'error': f'AI Provider Error: {response.text}'}, status=500)
@@ -205,11 +211,25 @@ def api_ai_lookup(request):
             content = "\n".join(lines)
             
         result = json.loads(content)
+        pos_aliases = {
+            'noun': 'noun',
+            'verb': 'verb',
+            'adj': 'adj',
+            'adjective': 'adj',
+            'adv': 'adv',
+            'adverb': 'adv',
+            'phrase': 'phrase',
+            'expression': 'phrase',
+            'phrasal verb': 'phrase',
+            'other': 'other',
+            'interjection': 'other',
+        }
+        result['pos'] = pos_aliases.get(str(result.get('pos', '')).lower().strip(), 'other')
         
         return JsonResponse(result)
 
     except json.JSONDecodeError:
-        print(f"AI Raw Content: {content}") # Log for debug
+        print(f"AI Raw Content: {locals().get('content', '')}") # Log for debug
         return JsonResponse({'error': 'AI Parse Error: Invalid JSON received'}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)

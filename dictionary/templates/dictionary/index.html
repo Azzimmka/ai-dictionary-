@@ -75,7 +75,7 @@
         <div
           class="h-14 w-14 rounded-full bg-white dark:bg-gray-800 p-3 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden">
           <img src="{% static 'dictionary/logo.svg' %}" alt="Logo"
-            class="w-full h-full object-contain dark:brightness-0 dark:invert">
+            class="w-full h-full object-contain">
         </div>
         <div>
           <h1 class="text-2xl font-bold tracking-tight">Мой словарь</h1>
@@ -502,32 +502,7 @@
 
         // Handle POS
         if (data.pos) {
-          // Internal mapping
-          const map = { 'noun': 'noun', 'verb': 'verb', 'adj': 'adjective', 'adv': 'adverb', 'other': 'other' };
-          // Visual label mapping
-          const labelMap = {
-            'noun': 'Существительное',
-            'verb': 'Глагол',
-            'adj': 'Прилагательное',
-            'adv': 'Наречие',
-            'other': 'Другое',
-            'adjective': 'Прилагательное', // handle both cases
-            'adverb': 'Наречие'
-          };
-
-          // Set logic
-          const mappedPos = map[data.pos] || 'other';
-          selectedPosValue = mappedPos;
-
-          // Update Badge Label (UI)
-          const posLabel = document.getElementById('posLabel');
-          const visualText = labelMap[data.pos] || labelMap[mappedPos] || 'Часть речи';
-
-          if (posLabel) {
-            posLabel.textContent = visualText;
-            posLabel.classList.remove('text-gray-400');
-            posLabel.classList.add('text-gray-700', 'dark:text-gray-300');
-          }
+          setPosValue(data.pos);
         }
 
       } catch (error) {
@@ -727,6 +702,34 @@
       { val: 'other', label: 'Другое' },
     ];
 
+    function normalizePosValue(value) {
+      const aliases = {
+        noun: 'noun',
+        verb: 'verb',
+        adj: 'adj',
+        adjective: 'adj',
+        adv: 'adv',
+        adverb: 'adv',
+        phrase: 'phrase',
+        expression: 'phrase',
+        'phrasal verb': 'phrase',
+        other: 'other',
+        interjection: 'other',
+      };
+      return aliases[String(value || '').toLowerCase().trim()] || 'other';
+    }
+
+    function setPosValue(value) {
+      const normalized = normalizePosValue(value);
+      const option = posOptions.find(opt => opt.val === normalized) || posOptions.find(opt => opt.val === 'other');
+      selectedPosValue = option.val;
+      posLabel.textContent = option.label;
+      posLabel.classList.toggle('text-gray-400', !option.val);
+      posLabel.classList.toggle('text-gray-700', !!option.val);
+      posLabel.classList.toggle('dark:text-gray-300', !!option.val);
+      renderPosOptions();
+    }
+
     function renderPosOptions() {
       posList.innerHTML = '';
       posOptions.forEach(opt => {
@@ -866,6 +869,8 @@
           } catch { }
         });
 
+        setupMobileLongPress(node, card);
+
         // Drag Start
         node.addEventListener('dragstart', (e) => {
           e.dataTransfer.setData('text/plain', card.id);
@@ -883,6 +888,103 @@
       });
     }
 
+    async function moveCardToStatus(card, isLearnedTarget) {
+      if (!card || (card.learned || card.is_learned) === isLearnedTarget) return;
+
+      const previousLearned = card.learned || card.is_learned;
+      card.learned = isLearnedTarget;
+      card.is_learned = isLearnedTarget;
+      renderCards(localWords);
+
+      try {
+        await fetch(`/api/words/${card.id}/update/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ learned: isLearnedTarget })
+        });
+        showToast(isLearnedTarget ? 'Перемещено в выученные' : 'Перемещено в изучаю');
+      } catch {
+        card.learned = previousLearned;
+        card.is_learned = previousLearned;
+        renderCards(localWords);
+        showToast('Не удалось переместить');
+      }
+    }
+
+    function openMoveCardModal(card) {
+      const isLearned = card.learned || card.is_learned;
+      const html = `
+        <div class="space-y-3">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">Выберите колонку для этой карточки.</p>
+          <button type="button" data-move-target="false"
+            class="w-full text-left px-5 py-4 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-bold transition-colors ${!isLearned ? 'ring-2 ring-gray-300 dark:ring-gray-600' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}">
+            Изучаю
+          </button>
+          <button type="button" data-move-target="true"
+            class="w-full text-left px-5 py-4 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white font-bold transition-colors ${isLearned ? 'ring-2 ring-gray-300 dark:ring-gray-600' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}">
+            Выучено
+          </button>
+        </div>
+      `;
+
+      modalCallback = null;
+      const close = showModal('Переместить слово', html, null);
+      modalContent.querySelectorAll('[data-move-target]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          close();
+          await moveCardToStatus(card, btn.dataset.moveTarget === 'true');
+        });
+      });
+    }
+
+    function setupMobileLongPress(node, card) {
+      let timer = null;
+      let startX = 0;
+      let startY = 0;
+      let didLongPress = false;
+
+      const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
+      const isInteractive = (target) => target.closest('button, input, textarea, select, a');
+      const clearTimer = () => {
+        if (timer) clearTimeout(timer);
+        timer = null;
+        node.classList.remove('ring-2', 'ring-indigo-500/50');
+      };
+
+      node.addEventListener('pointerdown', (e) => {
+        if (!isMobile() || e.pointerType !== 'touch' || isInteractive(e.target)) return;
+
+        startX = e.clientX;
+        startY = e.clientY;
+        didLongPress = false;
+        node.classList.add('ring-2', 'ring-indigo-500/50');
+
+        timer = setTimeout(() => {
+          didLongPress = true;
+          clearTimer();
+          if (navigator.vibrate) navigator.vibrate(30);
+          openMoveCardModal(card);
+        }, 2000);
+      });
+
+      node.addEventListener('pointermove', (e) => {
+        if (!timer) return;
+        const moved = Math.abs(e.clientX - startX) > 12 || Math.abs(e.clientY - startY) > 12;
+        if (moved) clearTimer();
+      });
+
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(eventName => {
+        node.addEventListener(eventName, clearTimer);
+      });
+
+      node.addEventListener('click', (e) => {
+        if (!didLongPress) return;
+        e.preventDefault();
+        e.stopPropagation();
+        didLongPress = false;
+      });
+    }
+
     // --- Modal Logic ---
     const modal = document.getElementById('customModal');
     const modalOverlay = document.getElementById('modalOverlay');
@@ -896,7 +998,8 @@
     function showModal(title, htmlContent, onConfirmText = 'ОК') {
       modalTitle.textContent = title;
       modalContent.innerHTML = htmlContent;
-      modalConfirm.textContent = onConfirmText;
+      modalConfirm.classList.toggle('hidden', !onConfirmText);
+      if (onConfirmText) modalConfirm.textContent = onConfirmText;
 
       modal.classList.remove('hidden');
       // Animate in
@@ -911,6 +1014,7 @@
         modalPanel.classList.add('opacity-0', 'translate-y-full');
         setTimeout(() => modal.classList.add('hidden'), 300);
         modalConfirm.onclick = null;
+        modalConfirm.classList.remove('hidden');
       };
 
       modalCancel.onclick = close;
@@ -918,6 +1022,8 @@
         if (modalCallback) modalCallback();
         close();
       };
+
+      return close;
     }
 
     function openConfirmModal(title, text, action) {
@@ -1026,21 +1132,7 @@
         const isLearnedTarget = (zone === learnedCol);
 
         const card = localWords.find(c => c.id === id);
-        if (card && (card.learned || card.is_learned) !== isLearnedTarget) {
-          // Update Local
-          card.learned = isLearnedTarget;
-          card.is_learned = isLearnedTarget; // sync
-          renderCards(localWords);
-
-          // Update API
-          try {
-            await fetch(`/api/words/${id}/update/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-              body: JSON.stringify({ learned: isLearnedTarget })
-            });
-          } catch { }
-        }
+        await moveCardToStatus(card, isLearnedTarget);
       });
     });
 
