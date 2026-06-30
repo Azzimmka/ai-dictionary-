@@ -72,11 +72,7 @@
     <!-- Header -->
     <header class="mb-10 flex flex-row sm:flex-row items-center justify-between gap-6">
       <div class="flex items-center gap-4">
-        <div
-          class="h-14 w-14 rounded-full bg-white dark:bg-gray-800 p-3 shadow-sm border border-gray-100 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-          <img src="{% static 'dictionary/logo.svg' %}" alt="Logo"
-            class="w-full h-full object-contain">
-        </div>
+        
         <div>
           <h1 class="text-2xl font-bold tracking-tight">Мой словарь</h1>
           {% if user.is_authenticated %}
@@ -370,6 +366,10 @@
             </button>
           </div>
         </div>
+        <button type="button"
+          class="mobileMoveBtn mt-4 w-full md:hidden rounded-2xl bg-gray-100 dark:bg-gray-800 px-5 py-3.5 text-sm font-bold text-gray-800 dark:text-gray-100 transition-colors active:scale-[0.98]">
+          Выучил
+        </button>
       </div>
     </article>
   </template>
@@ -539,6 +539,8 @@
     let localWords = [];
     let localCategories = [];
     let selectedCategoryId = null;
+    const ttsAudioCache = new Map();
+    let activeAudio = null;
 
     // API
     function getCookie(name) {
@@ -571,6 +573,56 @@
         const data = await res.json();
         return data.categories;
       } catch { return []; }
+    }
+
+    function speakWithBrowserVoice(text) {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'en-US';
+      window.speechSynthesis.speak(utter);
+    }
+
+    async function speakWithGroqVoice(text, button) {
+      const normalized = String(text || '').trim();
+      if (!normalized) return;
+
+      const cacheKey = normalized.toLowerCase();
+      const originalOpacity = button.style.opacity;
+      button.style.opacity = '0.45';
+      button.disabled = true;
+
+      try {
+        let audioUrl = ttsAudioCache.get(cacheKey);
+        if (!audioUrl) {
+          const response = await fetch('/api/tts/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({ text: normalized })
+          });
+
+          if (!response.ok) throw new Error('TTS request failed');
+
+          const audioBlob = await response.blob();
+          audioUrl = URL.createObjectURL(audioBlob);
+          ttsAudioCache.set(cacheKey, audioUrl);
+        }
+
+        if (activeAudio) {
+          activeAudio.pause();
+          activeAudio.currentTime = 0;
+        }
+
+        activeAudio = new Audio(audioUrl);
+        await activeAudio.play();
+      } catch (error) {
+        console.warn('Groq TTS failed, using browser voice:', error);
+        speakWithBrowserVoice(normalized);
+      } finally {
+        button.disabled = false;
+        button.style.opacity = originalOpacity;
+      }
     }
 
     async function initApp() {
@@ -824,6 +876,7 @@
           badge.textContent = card.pos;
           badge.classList.remove('hidden');
         }
+        const isLearned = card.learned || card.is_learned;
 
         // --- Logic ---
 
@@ -831,9 +884,7 @@
         const speakBtn = node.querySelector('.speakBtn');
         speakBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          const utter = new SpeechSynthesisUtterance(card.word);
-          utter.lang = 'en-US';
-          window.speechSynthesis.speak(utter);
+          speakWithGroqVoice(card.word, speakBtn);
         });
 
         // Edit Modal
@@ -869,6 +920,14 @@
           } catch { }
         });
 
+        const mobileMoveBtn = node.querySelector('.mobileMoveBtn');
+        mobileMoveBtn.textContent = isLearned ? '↩ В изучаю' : '✓ Выучил';
+        mobileMoveBtn.setAttribute('aria-label', isLearned ? 'Переместить в изучаю' : 'Переместить в выучено');
+        mobileMoveBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await moveCardToStatus(card, !isLearned);
+        });
+
         setupMobileLongPress(node, card);
 
         // Drag Start
@@ -883,7 +942,6 @@
         });
 
         // Append to column
-        const isLearned = card.learned || card.is_learned;
         (isLearned ? learnedCol : unlearnedCol).appendChild(node);
       });
     }

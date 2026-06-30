@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/words/<int:pk>/delete/', api.api_word_delete, name='api_word_delete'),
     
     path('api/ai-lookup/', api.api_ai_lookup, name='api_ai_lookup'),
+    path('api/tts/', api.api_tts, name='api_tts'),
     
     # PWA
     path('manifest.json', views.pwa_manifest, name='pwa_manifest'),

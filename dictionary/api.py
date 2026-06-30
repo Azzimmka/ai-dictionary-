@@ -1,5 +1,5 @@
 import json
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import Word, Category
@@ -142,6 +142,12 @@ def api_word_delete(request, pk):
 import os
 import requests
 
+GROQ_CHAT_MODEL = "llama-3.3-70b-versatile"
+GROQ_TTS_MODEL = "canopylabs/orpheus-v1-english"
+GROQ_TTS_VOICE = "hannah"
+GROQ_TTS_MAX_CHARS = 200
+GROQ_API_BASE = "https://api.groq.com/openai/v1"
+
 @login_required
 @require_http_methods(["POST"])
 def api_ai_lookup(request):
@@ -174,7 +180,7 @@ def api_ai_lookup(request):
         }
         
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": GROQ_CHAT_MODEL,
             "temperature": 0.2,
             "response_format": {"type": "json_object"},
             "messages": [
@@ -194,7 +200,7 @@ def api_ai_lookup(request):
         }
         
         # 3. Request
-        response = requests.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=12)
+        response = requests.post(f"{GROQ_API_BASE}/chat/completions", json=payload, headers=headers, timeout=12)
         
         if response.status_code != 200:
             return JsonResponse({'error': f'AI Provider Error: {response.text}'}, status=500)
@@ -231,5 +237,48 @@ def api_ai_lookup(request):
     except json.JSONDecodeError:
         print(f"AI Raw Content: {locals().get('content', '')}") # Log for debug
         return JsonResponse({'error': 'AI Parse Error: Invalid JSON received'}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def api_tts(request):
+    try:
+        data = json.loads(request.body)
+        text = data.get('text', '').strip()
+
+        if not text:
+            return JsonResponse({'error': 'Text is required'}, status=400)
+        if len(text) > GROQ_TTS_MAX_CHARS:
+            return JsonResponse({'error': f'Text must be {GROQ_TTS_MAX_CHARS} characters or fewer'}, status=400)
+
+        groq_key = os.environ.get('GROQ_API_KEY')
+        if not groq_key:
+            return JsonResponse({'error': 'Server config missing: GROQ_API_KEY'}, status=500)
+
+        payload = {
+            "model": GROQ_TTS_MODEL,
+            "voice": GROQ_TTS_VOICE,
+            "input": text,
+            "response_format": "wav",
+        }
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.post(f"{GROQ_API_BASE}/audio/speech", json=payload, headers=headers, timeout=15)
+        if response.status_code != 200:
+            return JsonResponse({'error': 'TTS provider error'}, status=500)
+
+        audio = HttpResponse(response.content, content_type='audio/wav')
+        audio['Cache-Control'] = 'private, max-age=86400'
+        audio['Content-Disposition'] = 'inline; filename="word.wav"'
+        return audio
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except requests.RequestException:
+        return JsonResponse({'error': 'TTS provider unavailable'}, status=502)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
