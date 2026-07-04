@@ -1,6 +1,8 @@
-const CACHE_NAME = 'ai-dict-cache-v8';
+const CACHE_NAME = 'ai-dict-cache-v11';
 const ASSETS_TO_CACHE = [
     '/',
+    '/static/dictionary/logo.png',
+    '/static/dictionary/favicon.png',
     '/static/dictionary/logo.svg',
     '/static/dictionary/favicon.svg',
     '/static/dictionary/moon.svg',

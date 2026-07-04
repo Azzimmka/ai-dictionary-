@@ -433,14 +433,30 @@ def api_words_bulk_ai(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
-def build_local_quiz(words, count):
+def normalize_quiz_difficulty(value):
+    difficulty = str(value or "medium").strip().lower()
+    if difficulty not in {"easy", "medium", "hard"}:
+        return "medium"
+    return difficulty
+
+
+def quiz_type_for_difficulty(difficulty, index):
+    if difficulty == "easy":
+        return "translation_choice"
+    if difficulty == "hard":
+        return ["fill_blank", "pos_choice", "fill_blank", "translation_choice"][index % 4]
+    return ["translation_choice", "fill_blank", "pos_choice"][index % 3]
+
+
+def build_local_quiz(words, count, difficulty="medium"):
     words = list(words)
     random.shuffle(words)
     selected = words[:count]
     questions = []
+    difficulty = normalize_quiz_difficulty(difficulty)
 
     for index, word in enumerate(selected):
-        qtype = ["translation_choice", "fill_blank", "pos_choice"][index % 3]
+        qtype = quiz_type_for_difficulty(difficulty, index)
         if qtype == "translation_choice":
             distractors = [w.translation for w in words if w.id != word.id and w.translation][:3]
             options = distractors + [word.translation]
@@ -497,10 +513,11 @@ def sanitize_quiz_questions(items, words_by_id, count):
     return questions
 
 
-def build_quiz(words, count):
+def build_quiz(words, count, difficulty="medium"):
     words = list(words)
+    difficulty = normalize_quiz_difficulty(difficulty)
     if not get_groq_key():
-        return build_local_quiz(words, count)
+        return build_local_quiz(words, count, difficulty)
 
     compact_words = [
         {
@@ -514,6 +531,10 @@ def build_quiz(words, count):
     ]
     prompt = (
         "Create a Russian-language vocabulary quiz from these saved dictionary words.\n"
+        f"Difficulty: {difficulty}. "
+        "For easy, prefer direct translation-choice questions with clear distractors. "
+        "For medium, mix translation_choice, fill_blank, and pos_choice. "
+        "For hard, prefer fill_blank and pos_choice, use closer distractors, and avoid overly obvious prompts.\n"
         f"Return exactly {count} questions as JSON: "
         "{\"questions\":[{\"word_id\":1,\"type\":\"translation_choice|fill_blank|pos_choice\","
         "\"prompt\":\"...\",\"options\":[\"...\"],\"answer\":\"...\"}]}.\n"
@@ -528,7 +549,7 @@ def build_quiz(words, count):
             return questions
     except Exception:
         pass
-    return build_local_quiz(words, count)
+    return build_local_quiz(words, count, difficulty)
 
 
 @login_required
@@ -537,6 +558,7 @@ def api_quiz_generate(request):
     try:
         data = json.loads(request.body or "{}")
         count = min(max(int(data.get("count", 5)), 5), 10)
+        difficulty = normalize_quiz_difficulty(data.get("difficulty"))
         words = Word.objects.filter(user=request.user).exclude(translation="")
         if data.get("category_id"):
             words = words.filter(category_id=data.get("category_id"))
@@ -544,8 +566,8 @@ def api_quiz_generate(request):
         if len(words) < QUIZ_MIN_WORDS:
             return JsonResponse({"error": f"At least {QUIZ_MIN_WORDS} words are required"}, status=400)
 
-        questions = build_quiz(words, min(count, len(words)))
-        return JsonResponse({"questions": questions})
+        questions = build_quiz(words, min(count, len(words)), difficulty)
+        return JsonResponse({"questions": questions, "difficulty": difficulty, "count": len(questions)})
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
@@ -561,8 +583,12 @@ def api_quiz_submit(request):
 
         for answer in answers:
             word_id = answer.get("word_id")
-            expected = normalize_text(answer.get("expected"))
-            given = normalize_text(answer.get("answer"))
+            raw_expected = str(answer.get("expected", "")).strip()
+            raw_given = str(answer.get("answer", "")).strip()
+            prompt = str(answer.get("prompt", "")).strip()
+            question_type = str(answer.get("type", "")).strip()
+            expected = normalize_text(raw_expected)
+            given = normalize_text(raw_given)
             is_correct = bool(expected and given == expected)
             try:
                 word = Word.objects.get(pk=word_id, user=request.user)
@@ -576,7 +602,17 @@ def api_quiz_submit(request):
                 word.quiz_wrong_count += 1
             word.is_difficult = word.lapse_count + word.quiz_wrong_count > word.quiz_correct_count + 1
             word.save()
-            results.append({"word_id": word.id, "correct": is_correct})
+            results.append(
+                {
+                    "word_id": word.id,
+                    "word": word.term,
+                    "type": question_type,
+                    "prompt": prompt,
+                    "expected": raw_expected,
+                    "answer": raw_given,
+                    "correct": is_correct,
+                }
+            )
 
         return JsonResponse({"score": correct, "total": len(results), "results": results})
     except json.JSONDecodeError:

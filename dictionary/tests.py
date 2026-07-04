@@ -73,9 +73,12 @@ class LearningApiTests(TestCase):
             self.create_word(term=f"mine-{idx}", translation=f"перевод-{idx}")
         Word.objects.create(user=self.other, term="secret", translation="секрет")
 
-        response = self.post_json("/api/quiz/generate/", {"count": 5})
+        response = self.post_json("/api/quiz/generate/", {"count": 5, "difficulty": "hard"})
         self.assertEqual(response.status_code, 200)
-        word_ids = {item["word_id"] for item in response.json()["questions"]}
+        data = response.json()
+        self.assertEqual(data["difficulty"], "hard")
+        self.assertEqual(data["count"], 5)
+        word_ids = {item["word_id"] for item in data["questions"]}
         self.assertTrue(word_ids)
         self.assertFalse(Word.objects.filter(user=self.other, id__in=word_ids).exists())
 
@@ -83,9 +86,25 @@ class LearningApiTests(TestCase):
         word = self.create_word(term="run", translation="бежать")
         response = self.post_json(
             "/api/quiz/submit/",
-            {"answers": [{"word_id": word.id, "expected": "бежать", "answer": "wrong"}]},
+            {
+                "answers": [
+                    {
+                        "word_id": word.id,
+                        "type": "multiple_choice",
+                        "prompt": "Choose the translation for run",
+                        "expected": "бежать",
+                        "answer": "wrong",
+                    }
+                ]
+            },
         )
         self.assertEqual(response.status_code, 200)
+        result = response.json()["results"][0]
+        self.assertEqual(result["word"], "run")
+        self.assertEqual(result["prompt"], "Choose the translation for run")
+        self.assertEqual(result["expected"], "бежать")
+        self.assertEqual(result["answer"], "wrong")
+        self.assertFalse(result["correct"])
         word.refresh_from_db()
         self.assertEqual(word.quiz_wrong_count, 1)
 

@@ -6,13 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Мой словарь</title>
   {% load static %}
-  <link rel="icon" type="image/svg+xml" href="{% static 'dictionary/favicon.svg' %}">
+  <link rel="icon" type="image/png" href="{% static 'dictionary/logo.png' %}">
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#111827">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Словарь">
-  <link rel="apple-touch-icon" href="{% static 'dictionary/logo.svg' %}">
+  <link rel="apple-touch-icon" href="{% static 'dictionary/logo.png' %}">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -138,6 +138,27 @@
       }
       100% {
         transform: translateX(55%) rotate(8deg);
+      }
+    }
+
+    .modal-panel {
+      max-height: calc(100dvh - 1rem);
+      padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+      overflow-y: auto;
+    }
+
+    .modal-actions {
+      margin-bottom: max(0.25rem, env(safe-area-inset-bottom));
+    }
+
+    @media (min-width: 640px) {
+      .modal-panel {
+        max-height: calc(100dvh - 3rem);
+        padding-bottom: 2rem;
+      }
+
+      .modal-actions {
+        margin-bottom: 0;
       }
     }
 
@@ -396,13 +417,13 @@
     class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center pointer-events-none">
     <div class="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity opacity-0" id="modalOverlay"></div>
     <div
-      class="bg-white dark:bg-gray-900 w-full sm:w-[450px] sm:rounded-3xl rounded-t-3xl p-6 sm:p-8 shadow-2xl transform transition-all translate-y-full sm:translate-y-10 opacity-0 pointer-events-auto"
+      class="modal-panel bg-white dark:bg-gray-900 w-full sm:w-[450px] sm:rounded-3xl rounded-t-3xl p-6 sm:p-8 shadow-2xl transform transition-all translate-y-full sm:translate-y-10 opacity-0 pointer-events-auto"
       id="modalPanel">
       <h3 id="modalTitle" class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Title</h3>
       <div id="modalContent" class="space-y-4 mb-8">
         <!-- Content injected here -->
       </div>
-      <div class="flex gap-3">
+      <div class="modal-actions flex gap-3">
         <button id="modalCancel"
           class="flex-1 py-3.5 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">Отмена</button>
         <button id="modalConfirm"
@@ -890,77 +911,194 @@
     }
 
     async function openQuizSession() {
-      const close = showModal('AI Quiz', '<p class="text-gray-500 dark:text-gray-400">Готовлю вопросы...</p>', null);
-      try {
-        const res = await fetch('/api/quiz/generate/', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-          body: JSON.stringify({ count: 6, category_id: selectedCategoryId })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Quiz failed');
-        const questions = data.questions || [];
-        let index = 0;
-        const answers = [];
+      showModal('AI Quiz', '', null);
+      let quizCount = 6;
+      let quizDifficulty = 'medium';
 
-        const renderQuestion = () => {
-          if (index >= questions.length) return submitQuiz();
-          const q = questions[index];
-          const options = (q.options || []).map(opt => `
-            <button type="button" data-answer="${escapeHtml(opt)}"
-              class="quizAnswer w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-4 py-3 text-left font-bold">
-              ${escapeHtml(opt)}
-            </button>
-          `).join('');
+      const difficultyLabels = {
+        easy: 'Easy',
+        medium: 'Medium',
+        hard: 'Hard',
+      };
 
-          modalContent.innerHTML = `
-            <div class="space-y-5">
-              <div class="text-sm text-gray-400">${index + 1} / ${questions.length}</div>
-              <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-5 border border-2">
-                <div class="text-lg font-bold">${escapeHtml(q.prompt)}</div>
-              </div>
-              ${q.type === 'fill_blank' ? `
-                <input id="quizTextAnswer" class="w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-4 py-3 outline-none" placeholder="Ответ">
-                <button id="quizSubmitText" class="w-full rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 font-bold text-white dark:text-gray-900">Ответить</button>
-              ` : `<div class="space-y-2">${options}</div>`}
+      const renderQuizSetup = () => {
+        modalContent.innerHTML = `
+          <div class="space-y-5">
+            <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-5">
+              <div class="text-xs font-black uppercase tracking-widest text-gray-400">Настрой quiz</div>
+              <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Выбери количество вопросов и сложность перед генерацией.</p>
             </div>
-          `;
 
-          const save = (value) => {
-            answers.push({ word_id: q.word_id, expected: q.answer, answer: value });
-            index += 1;
-            renderQuestion();
-          };
-          modalContent.querySelectorAll('.quizAnswer').forEach(btn => {
-            btn.addEventListener('click', () => save(btn.dataset.answer));
+            <div>
+              <div class="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Сколько вопросов?</div>
+              <div class="grid grid-cols-3 gap-2">
+                ${[5, 6, 7, 8, 9, 10].map(count => `
+                  <button type="button" data-quiz-count="${count}"
+                    class="quizCountBtn rounded-2xl px-4 py-3 text-sm font-black transition-all ${count === quizCount ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}">
+                    ${count}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <div>
+              <div class="text-xs font-black uppercase tracking-widest text-gray-400 mb-2">Сложность</div>
+              <div class="grid grid-cols-3 gap-2">
+                ${['easy', 'medium', 'hard'].map(level => `
+                  <button type="button" data-quiz-difficulty="${level}"
+                    class="quizDifficultyBtn rounded-2xl px-3 py-3 text-sm font-black transition-all ${level === quizDifficulty ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}">
+                    ${difficultyLabels[level]}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <button id="quizStartBtn" type="button" class="ai-quiz-button w-full rounded-2xl px-5 py-3.5 text-sm font-black tracking-wide transition-all duration-200">
+              <span class="relative z-10">Сгенерировать quiz</span>
+            </button>
+          </div>
+        `;
+
+        modalContent.querySelectorAll('.quizCountBtn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            quizCount = Number(btn.dataset.quizCount);
+            renderQuizSetup();
           });
-          const textBtn = document.getElementById('quizSubmitText');
-          if (textBtn) {
-            textBtn.addEventListener('click', () => save(document.getElementById('quizTextAnswer').value));
-          }
-        };
+        });
+        modalContent.querySelectorAll('.quizDifficultyBtn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            quizDifficulty = btn.dataset.quizDifficulty;
+            renderQuizSetup();
+          });
+        });
+        document.getElementById('quizStartBtn').addEventListener('click', () => startQuiz(quizCount, quizDifficulty));
+      };
 
-        const submitQuiz = async () => {
-          const res = await fetch('/api/quiz/submit/', {
+      const startQuiz = async (count, difficulty) => {
+        modalContent.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Готовлю вопросы...</p>';
+        try {
+          const res = await fetch('/api/quiz/generate/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({ answers })
+            body: JSON.stringify({ count, difficulty, category_id: selectedCategoryId })
           });
-          const result = await res.json();
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Quiz failed');
+          const questions = data.questions || [];
+          let index = 0;
+          const answers = [];
+
+          const renderQuestion = () => {
+            if (index >= questions.length) return submitQuiz();
+            const q = questions[index];
+            const options = (q.options || []).map(opt => `
+              <button type="button" data-answer="${escapeHtml(opt)}"
+                class="quizAnswer w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-4 py-3 text-left font-bold">
+                ${escapeHtml(opt)}
+              </button>
+            `).join('');
+
+            modalContent.innerHTML = `
+              <div class="space-y-5">
+                <div class="flex items-center justify-between gap-3 text-sm">
+                  <span class="text-gray-400">${index + 1} / ${questions.length}</span>
+                  <span class="rounded-full bg-gray-100 dark:bg-gray-800 px-3 py-1 text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-300">${escapeHtml(difficulty)}</span>
+                </div>
+                <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-5 border border-2">
+                  <div class="text-lg font-bold">${escapeHtml(q.prompt)}</div>
+                </div>
+                ${q.type === 'fill_blank' ? `
+                  <input id="quizTextAnswer" class="w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-4 py-3 outline-none" placeholder="Ответ">
+                  <button id="quizSubmitText" class="w-full rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 font-bold text-white dark:text-gray-900">Ответить</button>
+                ` : `<div class="space-y-2">${options}</div>`}
+              </div>
+            `;
+
+            const save = (value) => {
+              answers.push({
+                word_id: q.word_id,
+                type: q.type,
+                prompt: q.prompt,
+                expected: q.answer,
+                answer: value
+              });
+              index += 1;
+              renderQuestion();
+            };
+            modalContent.querySelectorAll('.quizAnswer').forEach(btn => {
+              btn.addEventListener('click', () => save(btn.dataset.answer));
+            });
+            const textBtn = document.getElementById('quizSubmitText');
+            if (textBtn) {
+              textBtn.addEventListener('click', () => save(document.getElementById('quizTextAnswer').value));
+            }
+          };
+
+          const submitQuiz = async () => {
+            const res = await fetch('/api/quiz/submit/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+              body: JSON.stringify({ answers })
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Quiz submit failed');
+            const details = (result.results || []).map((item, detailIndex) => `
+              <div class="rounded-2xl border ${item.correct ? 'border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20' : 'border-red-100 dark:border-red-900/40 bg-red-50/70 dark:bg-red-950/20'} p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-xs font-black uppercase tracking-widest ${item.correct ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}">
+                      ${item.correct ? 'Правильно' : 'Ошибка'} · ${detailIndex + 1}
+                    </div>
+                    <div class="mt-2 text-sm font-bold leading-snug text-gray-900 dark:text-white">${escapeHtml(item.prompt || item.word || 'Вопрос')}</div>
+                    <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">${escapeHtml(item.word || '')}</div>
+                  </div>
+                  <div class="shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${item.correct ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200' : 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-200'}">
+                    ${item.correct ? '✓' : '×'}
+                  </div>
+                </div>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div class="rounded-xl bg-white/70 dark:bg-gray-900/50 px-3 py-2">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-400">Твой ответ</div>
+                    <div class="mt-1 font-bold text-gray-800 dark:text-gray-100">${escapeHtml(item.answer || '—')}</div>
+                  </div>
+                  <div class="rounded-xl bg-white/70 dark:bg-gray-900/50 px-3 py-2">
+                    <div class="text-[10px] font-black uppercase tracking-widest text-gray-400">Правильный ответ</div>
+                    <div class="mt-1 font-bold text-gray-800 dark:text-gray-100">${escapeHtml(item.expected || '—')}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('');
+            modalContent.innerHTML = `
+              <div class="space-y-5">
+                <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-5">
+                  <div class="text-xs font-black uppercase tracking-widest text-gray-400">Итог quiz · ${escapeHtml(difficulty)}</div>
+                  <div class="mt-2 text-4xl font-black text-gray-900 dark:text-white">${result.score} / ${result.total}</div>
+                  <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Ниже точный разбор: где ответ правильный, а где нужно повторить.</p>
+                </div>
+                <div class="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
+                  ${details || '<p class="text-gray-500 dark:text-gray-400">Нет ответов для разбора.</p>'}
+                </div>
+                <button id="quizAgainBtn" type="button" class="w-full rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 font-bold text-white dark:text-gray-900">Пройти ещё раз</button>
+              </div>
+            `;
+            document.getElementById('quizAgainBtn').addEventListener('click', openQuizSession);
+            localWords = await fetchWords();
+            renderCards(localWords);
+          };
+
+          renderQuestion();
+        } catch (error) {
           modalContent.innerHTML = `
             <div class="space-y-4">
-              <div class="text-4xl font-bold text-gray-900 dark:text-white">${result.score} / ${result.total}</div>
-              <p class="text-gray-500 dark:text-gray-400">Результат сохранен. Сложные слова будут отмечаться автоматически.</p>
+              <p class="text-red-500">${escapeHtml(error.message || 'Не удалось открыть quiz')}</p>
+              <button id="quizBackToSetup" type="button" class="w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-5 py-3.5 font-bold text-gray-700 dark:text-gray-200">Назад к настройкам</button>
             </div>
           `;
-          localWords = await fetchWords();
-          renderCards(localWords);
-        };
+          document.getElementById('quizBackToSetup').addEventListener('click', renderQuizSetup);
+        }
+      };
 
-        renderQuestion();
-      } catch (error) {
-        modalContent.innerHTML = `<p class="text-red-500">${escapeHtml(error.message || 'Не удалось открыть quiz')}</p>`;
-      }
+      renderQuizSetup();
     }
 
     function openPronunciationModal(card) {
