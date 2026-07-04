@@ -3,10 +3,10 @@ from .models import Word, Category
 
 @admin.register(Word)
 class WordAdmin(admin.ModelAdmin):
-    list_display = ('term', 'translation', 'pos', 'is_learned', 'user', 'created_at')
-    list_filter = ('is_learned', 'pos', 'created_at', 'user')
+    list_display = ('term', 'translation', 'pos', 'is_learned', 'is_difficult', 'review_due_at', 'user', 'created_at')
+    list_filter = ('is_learned', 'is_difficult', 'pos', 'created_at', 'user')
     search_fields = ('term', 'translation', 'user__username')
-    list_editable = ('is_learned',)
+    list_editable = ('is_learned', 'is_difficult')
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

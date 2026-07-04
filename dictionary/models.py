@@ -33,6 +33,15 @@ class Word(models.Model):
     pos = models.CharField(max_length=10, choices=POS_CHOICES, default='other')
     
     is_learned = models.BooleanField(default=False)
+    review_due_at = models.DateTimeField(blank=True, null=True)
+    review_interval_days = models.PositiveIntegerField(default=0)
+    review_ease = models.FloatField(default=2.5)
+    review_count = models.PositiveIntegerField(default=0)
+    lapse_count = models.PositiveIntegerField(default=0)
+    quiz_correct_count = models.PositiveIntegerField(default=0)
+    quiz_wrong_count = models.PositiveIntegerField(default=0)
+    is_difficult = models.BooleanField(default=False)
+    last_reviewed_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -61,6 +61,94 @@
     .dark ::-webkit-scrollbar-thumb {
       background-color: #374151;
     }
+
+    .translation-details {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transform: translateY(-4px);
+      transition: max-height 280ms ease, opacity 220ms ease, transform 280ms ease;
+    }
+
+    .translation-details.is-open {
+      max-height: 260px;
+      margin-top: 0.5rem;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .ai-quiz-button {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      color: white;
+      background:
+        linear-gradient(135deg, #4f46e5 0%, #7c3aed 44%, #0891b2 100%);
+      box-shadow:
+        0 12px 30px rgba(79, 70, 229, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.24);
+    }
+
+    .ai-quiz-button::before {
+      content: "";
+      position: absolute;
+      inset: -80% -35%;
+      z-index: -1;
+      background:
+        linear-gradient(115deg,
+          transparent 35%,
+          rgba(255, 255, 255, 0.18) 45%,
+          rgba(255, 255, 255, 0.42) 50%,
+          rgba(255, 255, 255, 0.16) 55%,
+          transparent 65%);
+      transform: translateX(-45%) rotate(8deg);
+      animation: aiQuizShine 4.8s ease-in-out infinite;
+    }
+
+    .ai-quiz-button::after {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      z-index: -2;
+      border-radius: inherit;
+      background:
+        radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.28), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%);
+      opacity: 0.8;
+    }
+
+    .ai-quiz-button:hover {
+      transform: translateY(-1px) scale(1.01);
+      box-shadow:
+        0 18px 42px rgba(79, 70, 229, 0.38),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+    }
+
+    .ai-quiz-button:active {
+      transform: translateY(1px) scale(0.985);
+      box-shadow:
+        0 8px 20px rgba(79, 70, 229, 0.24),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    @keyframes aiQuizShine {
+      0%, 62% {
+        transform: translateX(-55%) rotate(8deg);
+      }
+      100% {
+        transform: translateX(55%) rotate(8deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .translation-details,
+      .ai-quiz-button,
+      .ai-quiz-button::before {
+        animation: none;
+        transition: none;
+      }
+    }
   </style>
 </head>
 
@@ -72,7 +160,6 @@
     <!-- Header -->
     <header class="mb-10 flex flex-row sm:flex-row items-center justify-between gap-6">
       <div class="flex items-center gap-4">
-        
         <div>
           <h1 class="text-2xl font-bold tracking-tight">Мой словарь</h1>
           {% if user.is_authenticated %}
@@ -155,7 +242,6 @@
       </div>
 
       <!-- Main Input Form -->
-      <!-- Main Input Form -->
       <form id="entryForm" class="space-y-5 relative">
 
         <!-- AI Toggle Widget -->
@@ -174,7 +260,7 @@
             <div class="relative">
               <input id="wordInput" type="text" placeholder="Word"
                 class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 pr-10 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
-                required autocomplete="off">
+                required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
 
               <!-- Simple AI Loader -->
               <div id="aiLoading" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
@@ -227,6 +313,21 @@
           </button>
         </div>
       </form>
+
+      <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button id="reviewModeBtn" type="button"
+          class="rounded-2xl bg-gray-900 dark:bg-white px-5 py-3 text-sm font-bold text-white dark:text-gray-900 active:scale-[0.98] transition-all">
+          Повторение
+        </button>
+        <button id="bulkImportBtn" type="button"
+          class="rounded-2xl bg-gray-100 dark:bg-gray-800 px-5 py-3 text-sm font-bold text-gray-800 dark:text-gray-100 active:scale-[0.98] transition-all">
+          Импорт списком
+        </button>
+        <button id="quizModeBtn" type="button"
+          class="ai-quiz-button rounded-2xl px-5 py-3 text-sm font-black tracking-wide transition-all duration-200">
+          <span class="relative z-10">AI Quiz</span>
+        </button>
+      </div>
     </section>
 
     <!-- Search -->
@@ -332,26 +433,34 @@
           class="hidden text-[10px] font-bold uppercase tracking-wider bg-gray-100 dark:bg-gray-800 text-gray-500 px-2 py-1 rounded-lg shrink-0 h-fit"></span>
       </div>
 
-      <!-- Bottom: Input + Actions -->
+      <!-- Bottom: Translation + Actions -->
       <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800">
-        <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Перевод</div>
-        <div class="flex items-center gap-3">
-          <div class="flex-1 relative group/input overflow-hidden">
-            <input data-field="ru" type="text"
-              class="w-full bg-transparent text-gray-700 dark:text-gray-300 font-medium placeholder-gray-300 focus:outline-none min-w-0 pr-6"
-              placeholder="Добавить перевод...">
-            <!-- Gradient Fade -->
-            <div
-              class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white dark:from-gray-900 via-white/80 dark:via-gray-900/80 to-transparent pointer-events-none">
-            </div>
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Перевод</div>
+            <div data-field="ruPreview"
+              class="text-lg font-bold leading-snug text-gray-700 dark:text-gray-300 break-words"></div>
+            <button data-field="ruMore" type="button"
+              class="translationMore hidden mt-2 text-sm font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-300 dark:hover:text-indigo-200 transition-colors">
+            </button>
+            <div data-field="ruExpanded" class="translation-details space-y-1.5"></div>
           </div>
 
           <!-- Actions Row -->
-          <div class="flex gap-1 shrink-0">
+          <div class="flex gap-1 shrink-0 pt-5">
             <button class="speakBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg group/btn transition-colors"
               title="Слушать">
               <img src="{% static 'dictionary/icons8-sound.svg' %}"
                 class="w-5 h-5 opacity-40 group-hover/btn:opacity-100 transition-opacity dark:invert">
+            </button>
+            <button class="pronounceBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg group/btn transition-colors"
+              title="Практика произношения">
+              <svg class="w-5 h-5 opacity-40 group-hover/btn:opacity-100 transition-opacity" viewBox="0 0 24 24"
+                fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v1a7 7 0 0 1-14 0v-1"></path>
+                <path d="M12 18v3"></path>
+              </svg>
             </button>
             <button class="editBtn p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg group/btn transition-colors"
               title="Изменить">
@@ -386,6 +495,9 @@
     const exampleInput = document.getElementById('exampleInput');
     // const posSelect = document.getElementById('posSelect'); // Removed
     const ruInput = document.getElementById('ruInput');
+    const reviewModeBtn = document.getElementById('reviewModeBtn');
+    const bulkImportBtn = document.getElementById('bulkImportBtn');
+    const quizModeBtn = document.getElementById('quizModeBtn');
 
     /* --- AI Logic Implementation --- */
     let isAiMode = false;
@@ -573,6 +685,449 @@
         const data = await res.json();
         return data.categories;
       } catch { return []; }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (ch) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      }[ch]));
+    }
+
+    function upsertLocalWord(word) {
+      const index = localWords.findIndex(item => item.id === word.id);
+      if (index >= 0) {
+        localWords[index] = { ...localWords[index], ...word };
+      } else {
+        localWords.unshift(word);
+      }
+    }
+
+    function splitTranslations(value) {
+      return String(value || '')
+        .split(/[,;\n]+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+    }
+
+    function pluralizeMeaning(count) {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      if (mod10 === 1 && mod100 !== 11) return 'значение';
+      if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'значения';
+      return 'значений';
+    }
+
+    function renderTranslationBlock(node, card) {
+      const translation = card.translation || card.ru || '';
+      const values = splitTranslations(translation);
+      const preview = node.querySelector('[data-field="ruPreview"]');
+      const moreBtn = node.querySelector('[data-field="ruMore"]');
+      const expanded = node.querySelector('[data-field="ruExpanded"]');
+
+      if (!values.length) {
+        preview.textContent = 'Добавить перевод...';
+        preview.classList.add('text-gray-400', 'dark:text-gray-500');
+        moreBtn.classList.add('hidden');
+        expanded.innerHTML = '';
+        return;
+      }
+
+      preview.classList.remove('text-gray-400', 'dark:text-gray-500');
+      preview.textContent = values.slice(0, 2).join(', ');
+      expanded.innerHTML = values.slice(2).map((item, index) => `
+        <div class="flex items-start gap-2 rounded-xl bg-gray-50 dark:bg-gray-800/70 px-3 py-2">
+          <span class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-500/15 text-[11px] font-black text-indigo-500 dark:text-indigo-300">${index + 3}</span>
+          <span class="min-w-0 text-sm font-bold leading-snug text-gray-700 dark:text-gray-300 break-words">${escapeHtml(item)}</span>
+        </div>
+      `).join('');
+
+      if (values.length <= 2) {
+        moreBtn.classList.add('hidden');
+        expanded.classList.remove('is-open');
+        return;
+      }
+
+      const extraCount = values.length - 2;
+      let isOpen = false;
+      const updateButton = () => {
+        moreBtn.textContent = isOpen ? 'Свернуть' : `+ ещё ${extraCount} ${pluralizeMeaning(extraCount)}`;
+        moreBtn.setAttribute('aria-expanded', String(isOpen));
+        expanded.classList.toggle('is-open', isOpen);
+      };
+
+      moreBtn.classList.remove('hidden');
+      moreBtn.onclick = (event) => {
+        event.stopPropagation();
+        isOpen = !isOpen;
+        updateButton();
+      };
+      updateButton();
+    }
+
+    function openBulkImportModal() {
+      const close = showModal('Импорт слов', `
+        <div class="space-y-4">
+          <textarea id="bulkWordsInput" rows="8"
+            class="w-full resize-none rounded-2xl bg-gray-50 dark:bg-gray-800 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600"
+            placeholder="apple&#10;run&#10;look up"></textarea>
+          <p id="bulkImportStatus" class="text-sm text-gray-500 dark:text-gray-400">До 30 слов или фраз, по одному в строке.</p>
+          <button id="bulkImportRun" type="button"
+            class="w-full rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 text-sm font-bold text-white dark:text-gray-900">Заполнить через AI</button>
+        </div>
+      `, null);
+
+      document.getElementById('bulkImportRun').addEventListener('click', async () => {
+        const button = document.getElementById('bulkImportRun');
+        const status = document.getElementById('bulkImportStatus');
+        const words = document.getElementById('bulkWordsInput').value;
+        button.disabled = true;
+        button.textContent = 'AI заполняет...';
+        status.textContent = 'Это может занять несколько секунд.';
+
+        try {
+          const res = await fetch('/api/words/bulk-ai/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ words, category_id: selectedCategoryId })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Import failed');
+
+          data.created.forEach(upsertLocalWord);
+          renderCards(localWords);
+          showToast(`Добавлено: ${data.created.length}, пропущено: ${data.skipped.length}`);
+          close();
+        } catch (error) {
+          status.textContent = error.message || 'Не удалось импортировать слова';
+          button.disabled = false;
+          button.textContent = 'Попробовать еще раз';
+        }
+      });
+    }
+
+    async function openReviewSession() {
+      const close = showModal('Повторение', '<p class="text-gray-500 dark:text-gray-400">Загружаю слова...</p>', null);
+      try {
+        const res = await fetch('/api/review/due/?limit=20');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Review failed');
+        const queue = data.words || [];
+        let index = 0;
+        let revealed = false;
+
+        const renderReview = () => {
+          if (index >= queue.length) {
+            modalContent.innerHTML = `
+              <div class="space-y-4">
+                <p class="text-lg font-bold text-gray-900 dark:text-white">Готово на сегодня</p>
+                <p class="text-gray-500 dark:text-gray-400">Ты прошел все слова, которые сейчас доступны для повторения.</p>
+              </div>
+            `;
+            return;
+          }
+
+          const word = queue[index];
+          modalContent.innerHTML = `
+            <div class="space-y-5">
+              <div class="text-sm text-gray-400">${index + 1} / ${queue.length}</div>
+              <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-6">
+                <div class="text-3xl font-bold text-gray-900 dark:text-white">${escapeHtml(word.word)}</div>
+                ${revealed ? `
+                  <div class="mt-5 border-t border-gray-200 dark:border-gray-700 pt-5">
+                    <div class="text-xs font-bold uppercase tracking-widest text-gray-400">Перевод</div>
+                    <div class="mt-2 text-xl font-bold">${escapeHtml(word.translation)}</div>
+                    <div class="mt-4 text-sm italic text-gray-500 dark:text-gray-400">${escapeHtml(word.example || '')}</div>
+                  </div>
+                ` : ''}
+              </div>
+              ${revealed ? `
+                <div class="grid grid-cols-2 gap-2">
+                  <button data-grade="forgot" class="reviewGrade rounded-2xl bg-red-50 px-4 py-3 font-bold text-red-600">Не помню</button>
+                  <button data-grade="hard" class="reviewGrade rounded-2xl bg-amber-50 px-4 py-3 font-bold text-amber-700">Сложно</button>
+                  <button data-grade="good" class="reviewGrade rounded-2xl bg-emerald-50 px-4 py-3 font-bold text-emerald-700">Знаю</button>
+                  <button data-grade="easy" class="reviewGrade rounded-2xl bg-indigo-50 px-4 py-3 font-bold text-indigo-700">Легко</button>
+                </div>
+              ` : `
+                <button id="reviewRevealBtn" class="w-full rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 font-bold text-white dark:text-gray-900">Показать ответ</button>
+              `}
+            </div>
+          `;
+
+          const revealBtn = document.getElementById('reviewRevealBtn');
+          if (revealBtn) {
+            revealBtn.addEventListener('click', () => {
+              revealed = true;
+              renderReview();
+            });
+          }
+          modalContent.querySelectorAll('.reviewGrade').forEach(btn => {
+            btn.addEventListener('click', async () => {
+              const word = queue[index];
+              const grade = btn.dataset.grade;
+              const answer = await fetch(`/api/review/${word.id}/answer/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                body: JSON.stringify({ grade })
+              });
+              const updated = await answer.json();
+              if (answer.ok && updated.word) upsertLocalWord(updated.word);
+              index += 1;
+              revealed = false;
+              renderCards(localWords);
+              renderReview();
+            });
+          });
+        };
+
+        renderReview();
+      } catch (error) {
+        modalContent.innerHTML = `<p class="text-red-500">${escapeHtml(error.message || 'Не удалось открыть повторение')}</p>`;
+      }
+    }
+
+    async function openQuizSession() {
+      const close = showModal('AI Quiz', '<p class="text-gray-500 dark:text-gray-400">Готовлю вопросы...</p>', null);
+      try {
+        const res = await fetch('/api/quiz/generate/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+          body: JSON.stringify({ count: 6, category_id: selectedCategoryId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Quiz failed');
+        const questions = data.questions || [];
+        let index = 0;
+        const answers = [];
+
+        const renderQuestion = () => {
+          if (index >= questions.length) return submitQuiz();
+          const q = questions[index];
+          const options = (q.options || []).map(opt => `
+            <button type="button" data-answer="${escapeHtml(opt)}"
+              class="quizAnswer w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-4 py-3 text-left font-bold">
+              ${escapeHtml(opt)}
+            </button>
+          `).join('');
+
+          modalContent.innerHTML = `
+            <div class="space-y-5">
+              <div class="text-sm text-gray-400">${index + 1} / ${questions.length}</div>
+              <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-5 border border-2">
+                <div class="text-lg font-bold">${escapeHtml(q.prompt)}</div>
+              </div>
+              ${q.type === 'fill_blank' ? `
+                <input id="quizTextAnswer" class="w-full rounded-2xl bg-gray-100 dark:bg-gray-800 px-4 py-3 outline-none" placeholder="Ответ">
+                <button id="quizSubmitText" class="w-full rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 font-bold text-white dark:text-gray-900">Ответить</button>
+              ` : `<div class="space-y-2">${options}</div>`}
+            </div>
+          `;
+
+          const save = (value) => {
+            answers.push({ word_id: q.word_id, expected: q.answer, answer: value });
+            index += 1;
+            renderQuestion();
+          };
+          modalContent.querySelectorAll('.quizAnswer').forEach(btn => {
+            btn.addEventListener('click', () => save(btn.dataset.answer));
+          });
+          const textBtn = document.getElementById('quizSubmitText');
+          if (textBtn) {
+            textBtn.addEventListener('click', () => save(document.getElementById('quizTextAnswer').value));
+          }
+        };
+
+        const submitQuiz = async () => {
+          const res = await fetch('/api/quiz/submit/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify({ answers })
+          });
+          const result = await res.json();
+          modalContent.innerHTML = `
+            <div class="space-y-4">
+              <div class="text-4xl font-bold text-gray-900 dark:text-white">${result.score} / ${result.total}</div>
+              <p class="text-gray-500 dark:text-gray-400">Результат сохранен. Сложные слова будут отмечаться автоматически.</p>
+            </div>
+          `;
+          localWords = await fetchWords();
+          renderCards(localWords);
+        };
+
+        renderQuestion();
+      } catch (error) {
+        modalContent.innerHTML = `<p class="text-red-500">${escapeHtml(error.message || 'Не удалось открыть quiz')}</p>`;
+      }
+    }
+
+    function openPronunciationModal(card) {
+      const close = showModal('Произношение', `
+        <div class="space-y-4">
+          <div class="rounded-3xl bg-gray-50 dark:bg-gray-800 p-5">
+            <div class="text-xs font-bold uppercase tracking-widest text-gray-400">Слово</div>
+            <div id="pronunciationTarget" class="mt-2 text-3xl font-bold tracking-tight">${escapeHtml(card.word)}</div>
+          </div>
+          <div class="rounded-2xl bg-gray-50 dark:bg-gray-800 px-4 py-3">
+            <div class="text-xs font-bold uppercase tracking-widest text-gray-400">Распознано</div>
+            <div id="pronunciationLiveText" class="mt-1 min-h-7 text-lg font-bold text-gray-400">—</div>
+          </div>
+          <p id="pronunciationStatus" class="text-sm text-gray-500 dark:text-gray-400">Сначала можно послушать слово. Потом нажми запись и произнеси его — проверка начнется автоматически.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button id="pronunciationListen" class="rounded-2xl bg-gray-100 dark:bg-gray-800 px-5 py-3.5 font-bold text-gray-700 dark:text-gray-200">Прослушать</button>
+            <button id="pronunciationStart" class="rounded-2xl bg-gray-900 dark:bg-white px-5 py-3.5 font-bold text-white dark:text-gray-900">Записать</button>
+          </div>
+        </div>
+      `, null);
+
+      let recorder = null;
+      let chunks = [];
+      let recognition = null;
+      let stream = null;
+      let autoStopTimer = null;
+      let maxRecordTimer = null;
+      let finished = false;
+      let cancelled = false;
+      const status = document.getElementById('pronunciationStatus');
+      const startBtn = document.getElementById('pronunciationStart');
+      const listenBtn = document.getElementById('pronunciationListen');
+      const targetEl = document.getElementById('pronunciationTarget');
+      const liveTextEl = document.getElementById('pronunciationLiveText');
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      const cleanupTimers = () => {
+        if (autoStopTimer) clearTimeout(autoStopTimer);
+        if (maxRecordTimer) clearTimeout(maxRecordTimer);
+        autoStopTimer = null;
+        maxRecordTimer = null;
+      };
+
+      const stopRecording = (shouldSubmit = true) => {
+        if (finished) return;
+        finished = true;
+        if (!shouldSubmit) cancelled = true;
+        cleanupTimers();
+        if (recognition) {
+          try { recognition.onend = null; recognition.stop(); } catch { }
+        }
+        if (recorder && recorder.state !== 'inactive') {
+          recorder.stop();
+        } else if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
+      };
+
+      const normalizedChars = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const renderLiveMatch = (spokenText) => {
+        const target = String(card.word || '');
+        const targetNorm = normalizedChars(target);
+        const spokenNorm = normalizedChars(spokenText);
+        let matchedCount = 0;
+        while (
+          matchedCount < targetNorm.length &&
+          matchedCount < spokenNorm.length &&
+          targetNorm[matchedCount] === spokenNorm[matchedCount]
+        ) {
+          matchedCount += 1;
+        }
+        const hasMismatch = spokenNorm.length > matchedCount;
+        let normIndex = 0;
+        targetEl.innerHTML = [...target].map((char) => {
+          if (!/[a-z0-9]/i.test(char)) return escapeHtml(char);
+          const className = normIndex < matchedCount
+            ? 'text-emerald-500'
+            : (hasMismatch || spokenNorm.length >= targetNorm.length ? 'text-red-500' : 'text-gray-900 dark:text-white');
+          normIndex += 1;
+          return `<span class="${className}">${escapeHtml(char)}</span>`;
+        }).join('');
+        liveTextEl.textContent = spokenText || '—';
+        liveTextEl.classList.toggle('text-red-500', hasMismatch);
+        liveTextEl.classList.toggle('text-emerald-600', !!spokenText && !hasMismatch);
+      };
+
+      listenBtn.addEventListener('click', () => speakWithGroqVoice(card.word, listenBtn));
+
+      startBtn.addEventListener('click', async () => {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          chunks = [];
+          finished = false;
+          cancelled = false;
+          renderLiveMatch('');
+          recorder = new MediaRecorder(stream);
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) chunks.push(event.data);
+          };
+          recorder.onstop = async () => {
+            stream.getTracks().forEach(track => track.stop());
+            if (cancelled) return;
+            startBtn.disabled = false;
+            startBtn.textContent = 'Записать еще раз';
+            const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+            const form = new FormData();
+            form.append('word_id', card.id);
+            form.append('audio', blob, 'speech.webm');
+            status.textContent = 'Проверяю произношение...';
+
+            try {
+              const res = await fetch('/api/pronunciation/check/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: form
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || 'Pronunciation check failed');
+              renderLiveMatch(data.transcript || '');
+              status.innerHTML = `<span class="font-bold">${escapeHtml(data.feedback)}</span><br><span class="text-xs">Распознано: ${escapeHtml(data.transcript || '—')}</span>`;
+            } catch (error) {
+              status.textContent = error.message || 'Не удалось проверить произношение';
+            }
+          };
+          recorder.start();
+          startBtn.disabled = true;
+          startBtn.textContent = 'Слушаю...';
+          status.textContent = SpeechRecognition
+            ? 'Говори сейчас. Я остановлю запись автоматически после паузы.'
+            : 'Говори сейчас. Live-распознавание недоступно, запись остановится автоматически.';
+
+          if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = true;
+            recognition.continuous = false;
+            recognition.onresult = (event) => {
+              const transcript = Array.from(event.results)
+                .map(result => result[0]?.transcript || '')
+                .join(' ')
+                .trim();
+              renderLiveMatch(transcript);
+              if (autoStopTimer) clearTimeout(autoStopTimer);
+              autoStopTimer = setTimeout(stopRecording, 1200);
+            };
+            recognition.onerror = () => {
+              status.textContent = 'Live-распознавание не сработало, но аудио все равно проверится.';
+            };
+            recognition.onend = () => {
+              autoStopTimer = setTimeout(stopRecording, 500);
+            };
+            recognition.start();
+          }
+
+          maxRecordTimer = setTimeout(stopRecording, SpeechRecognition ? 8000 : 4500);
+        } catch {
+          status.textContent = 'Браузер не дал доступ к микрофону.';
+          startBtn.disabled = false;
+          startBtn.textContent = 'Записать';
+        }
+      });
+
+      modalCancel.onclick = () => {
+        stopRecording(false);
+        close();
+      };
     }
 
     function speakWithBrowserVoice(text) {
@@ -867,8 +1422,7 @@
         } else {
           exSection.classList.add('hidden');
         }
-        const ruField = node.querySelector('[data-field="ru"]');
-        ruField.value = card.translation || card.ru || ''; // handle both
+        renderTranslationBlock(node, card);
 
         // POS badge
         if (card.pos && card.pos !== 'other') {
@@ -885,6 +1439,11 @@
         speakBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           speakWithGroqVoice(card.word, speakBtn);
+        });
+
+        node.querySelector('.pronounceBtn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openPronunciationModal(card);
         });
 
         // Edit Modal
@@ -905,19 +1464,6 @@
               showToast('Удалено');
             } catch { }
           });
-        });
-
-        // Inbox Edit Translation
-        ruField.addEventListener('change', async () => {
-          const newVal = ruField.value.trim();
-          card.translation = newVal; // update local
-          try {
-            await fetch(`/api/words/${card.id}/update/`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-              body: JSON.stringify({ ru: newVal })
-            });
-          } catch { }
         });
 
         const mobileMoveBtn = node.querySelector('.mobileMoveBtn');
@@ -1094,22 +1640,29 @@
            <div class="space-y-4">
                <div>
                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Слово</label>
-                   <input id="editWord" type="text" value="${card.word}" class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900">
+                   <input id="editWord" type="text" value="${escapeHtml(card.word)}" class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900">
+               </div>
+               <div>
+                   <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Перевод</label>
+                   <textarea id="editTranslation" rows="3" class="w-full resize-none bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900" placeholder="мужчины, люди">${escapeHtml(card.translation || card.ru || '')}</textarea>
                </div>
                <div>
                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Пример</label>
-                   <input id="editExample" type="text" value="${card.example || ''}" class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900">
+                   <input id="editExample" type="text" value="${escapeHtml(card.example || '')}" class="w-full bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 font-medium outline-none focus:ring-2 focus:ring-gray-900">
                </div>
            </div>
         `;
 
       modalCallback = async () => {
         const newWord = document.getElementById('editWord').value.trim();
+        const newTranslation = document.getElementById('editTranslation').value.trim();
         const newEx = document.getElementById('editExample').value.trim();
         if (!newWord) return;
 
         // Update UI
         card.word = newWord;
+        card.translation = newTranslation;
+        card.ru = newTranslation;
         card.example = newEx;
         renderCards(localWords);
 
@@ -1118,7 +1671,7 @@
           await fetch(`/api/words/${card.id}/update/`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
-            body: JSON.stringify({ word: newWord, example: newEx })
+            body: JSON.stringify({ word: newWord, ru: newTranslation, example: newEx })
           });
         } catch { }
       };
@@ -1204,6 +1757,9 @@
 
     // Search
     searchInput.addEventListener('input', () => renderCards(localWords));
+    reviewModeBtn.addEventListener('click', openReviewSession);
+    bulkImportBtn.addEventListener('click', openBulkImportModal);
+    quizModeBtn.addEventListener('click', openQuizSession);
 
     // Dark Mode Toggle
     document.getElementById('darkModeBtn').addEventListener('click', () => {
