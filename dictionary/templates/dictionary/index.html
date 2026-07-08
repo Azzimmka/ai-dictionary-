@@ -580,6 +580,7 @@
     let suggestionAbortController = null;
     let suggestionItems = [];
     let activeSuggestionIndex = -1;
+    let lockedCorrectionQuery = '';
 
     // Toggle Handler
     if (aiToggleBtn) {
@@ -642,6 +643,9 @@
     // Input Handler
     wordInput.addEventListener('input', (e) => {
       const text = e.target.value.trim();
+      if (lockedCorrectionQuery && text !== lockedCorrectionQuery) {
+        lockedCorrectionQuery = '';
+      }
       updateWordSuggestions(text);
 
       if (!isAiMode) return;
@@ -696,6 +700,7 @@
 
         if (!response.ok) {
           if (response.status === 422) {
+            if (wordInput.value.trim() !== word) return;
             const correctionItems = (data.suggestions || [])
               .concat(data.correction ? [data.correction] : [])
               .map(item => (
@@ -703,7 +708,9 @@
                   ? { word: item, source: 'fix', pos: data.pos || 'other' }
                   : { word: item.word, source: item.source || 'fix', pos: item.pos || data.pos || 'other' }
               ));
-            renderWordSuggestions(mergeWordSuggestions(word, correctionItems));
+            lockedCorrectionQuery = word;
+            const mergedCorrections = mergeWordSuggestions(word, correctionItems);
+            if (mergedCorrections.length) renderWordSuggestions(mergedCorrections);
             showToast('Выбери правильное написание');
             return;
           }
@@ -929,6 +936,7 @@
     }
 
     function applyWordSuggestion(word) {
+      lockedCorrectionQuery = '';
       wordInput.value = word;
       hideWordSuggestions();
       clearTimeout(aiDebounceTimer);
@@ -943,12 +951,15 @@
       if (suggestionAbortController) suggestionAbortController.abort();
 
       if (query.length < 2) {
+        lockedCorrectionQuery = '';
         hideWordSuggestions();
         return;
       }
 
       const localSuggestions = mergeWordSuggestions(query, getLocalWordSuggestions(query));
-      renderWordSuggestions(localSuggestions);
+      if (lockedCorrectionQuery !== query) {
+        renderWordSuggestions(localSuggestions);
+      }
 
       suggestionDebounceTimer = setTimeout(async () => {
         suggestionAbortController = new AbortController();
@@ -959,8 +970,10 @@
           if (!response.ok) throw new Error();
           const data = await response.json();
           const merged = mergeWordSuggestions(query, localSuggestions, data.suggestions || []);
+          if (lockedCorrectionQuery === query) return;
           if (wordInput.value.trim() === query) renderWordSuggestions(merged);
         } catch (error) {
+          if (lockedCorrectionQuery === query) return;
           if (error.name !== 'AbortError') renderWordSuggestions(localSuggestions);
         }
       }, 350);
