@@ -1,0 +1,109 @@
+{% extends 'dictionary/base.html' %}
+
+{% block content %}
+<div class="w-full space-y-5">
+    <div class="flex items-center justify-between gap-4">
+        <div>
+            <p class="text-xs font-black uppercase tracking-wider text-gray-400">Профиль</p>
+            <h1 class="mt-1 text-3xl font-bold tracking-tight">Настройки аккаунта</h1>
+        </div>
+        <a href="{% url 'index' %}"
+            class="shrink-0 rounded-2xl bg-gray-100 px-4 py-3 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+            Назад
+        </a>
+    </div>
+
+    <section
+        class="w-full rounded-3xl border border-white bg-white p-7 shadow-xl shadow-gray-200/50 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
+        <div class="flex items-center gap-4">
+            <div
+                class="flex h-16 w-16 items-center justify-center rounded-3xl bg-gray-900 text-2xl font-black uppercase text-white dark:bg-white dark:text-gray-900">
+                {{ user.username|first }}
+            </div>
+            <div class="min-w-0">
+                <p class="truncate text-xl font-black tracking-tight">{{ user.username }}</p>
+                <p class="mt-1 text-sm font-medium text-gray-400">Аккаунт создан {{ user.date_joined|date:"d.m.Y" }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section
+        class="w-full rounded-3xl border border-white bg-white p-7 shadow-xl shadow-gray-200/50 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
+        <div class="mb-6">
+            <h2 class="text-xl font-black tracking-tight">Имя пользователя</h2>
+            <p class="mt-1 text-sm font-medium text-gray-400">Это имя видно в шапке словаря.</p>
+        </div>
+
+        {% if saved == 'username' %}
+        <div class="mb-5 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+            Имя пользователя обновлено.
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="username">
+
+            <div class="space-y-2">
+                <label class="ml-1 text-xs font-bold uppercase tracking-wider text-gray-400">Новое имя</label>
+                <input type="text" name="username" value="{{ username_form.username.value|default_if_none:'' }}"
+                    class="w-full rounded-2xl border-none bg-gray-50 px-5 py-4 text-lg font-medium outline-none transition-shadow placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:bg-gray-800 dark:focus:ring-gray-600"
+                    placeholder="Username" required>
+                {% for error in username_form.username.errors %}
+                <p class="ml-1 text-xs font-bold text-red-500">{{ error }}</p>
+                {% endfor %}
+            </div>
+
+            <button type="submit"
+                class="w-full rounded-2xl bg-gray-900 px-8 py-4 font-bold text-white shadow-lg shadow-gray-200 transition-all hover:scale-[1.02] active:scale-[0.98] dark:bg-white dark:text-gray-900 dark:shadow-none">
+                Сохранить имя
+            </button>
+        </form>
+    </section>
+
+    <section
+        class="w-full rounded-3xl border border-white bg-white p-7 shadow-xl shadow-gray-200/50 dark:border-gray-800 dark:bg-gray-900 dark:shadow-none">
+        <div class="mb-6">
+            <h2 class="text-xl font-black tracking-tight">Пароль</h2>
+            <p class="mt-1 text-sm font-medium text-gray-400">После смены пароля ты останешься в аккаунте.</p>
+        </div>
+
+        {% if saved == 'password' %}
+        <div class="mb-5 rounded-2xl bg-emerald-50 p-4 text-sm font-bold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+            Пароль обновлён.
+        </div>
+        {% endif %}
+
+        {% if password_form.non_field_errors %}
+        <div class="mb-5 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-600 dark:bg-red-900/20 dark:text-red-300">
+            {% for error in password_form.non_field_errors %}{{ error }}{% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="password">
+
+            {% for field in password_form %}
+            <div class="space-y-2">
+                <label class="ml-1 text-xs font-bold uppercase tracking-wider text-gray-400">{{ field.label }}</label>
+                <input type="password" name="{{ field.name }}"
+                    class="w-full rounded-2xl border-none bg-gray-50 px-5 py-4 text-lg font-medium outline-none transition-shadow placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:bg-gray-800 dark:focus:ring-gray-600"
+                    autocomplete="{{ field.field.widget.attrs.autocomplete|default:'off' }}" required>
+                {% if field.help_text %}
+                <p class="ml-1 text-xs font-medium leading-relaxed text-gray-400">{{ field.help_text|striptags }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                <p class="ml-1 text-xs font-bold text-red-500">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <button type="submit"
+                class="w-full rounded-2xl bg-gray-900 px-8 py-4 font-bold text-white shadow-lg shadow-gray-200 transition-all hover:scale-[1.02] active:scale-[0.98] dark:bg-white dark:text-gray-900 dark:shadow-none">
+                Обновить пароль
+            </button>
+        </form>
+    </section>
+</div>
+{% endblock %}

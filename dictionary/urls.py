@@ -3,10 +3,12 @@ from . import views, api
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('profile/', views.profile, name='profile'),
     path('signup/', views.signup, name='signup'),
     
     # API Endpoints
     path('api/words/', api.api_words_list, name='api_words_list'),
+    path('api/word-suggestions/', api.api_word_suggestions, name='api_word_suggestions'),
     path('api/words/add/', api.api_word_create, name='api_word_create'),
     path('api/words/bulk-ai/', api.api_words_bulk_ai, name='api_words_bulk_ai'),
     path('api/categories/', api.api_categories_list, name='api_categories_list'),

@@ -83,6 +83,111 @@ class LearningApiTests(TestCase):
         response = self.post_json("/api/words/add/", {"word": "men", "ru": "мужчины", "category_id": other_category.id})
         self.assertEqual(response.status_code, 400)
 
+    def test_profile_requires_login(self):
+        self.client.logout()
+        response = self.client.get("/profile/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+    def test_profile_updates_username(self):
+        response = self.client.post("/profile/", {"form_type": "username", "username": "newazim"})
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "newazim")
+
+    def test_profile_rejects_duplicate_username(self):
+        response = self.client.post("/profile/", {"form_type": "username", "username": "other"})
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, "azim")
+        self.assertContains(response, "Это имя уже занято.")
+
+    def test_profile_changes_password_and_keeps_session(self):
+        response = self.client.post(
+            "/profile/",
+            {
+                "form_type": "password",
+                "old_password": "pass-12345",
+                "new_password1": "fresh-pass-67890",
+                "new_password2": "fresh-pass-67890",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(self.client.get("/profile/").wsgi_request.user.is_authenticated)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("fresh-pass-67890"))
+
+    @patch("dictionary.api.get_groq_key", return_value=None)
+    def test_word_suggestions_are_user_scoped(self, _mock_key):
+        self.create_word(term="apple")
+        self.create_word(term="application")
+        Word.objects.create(user=self.other, term="apricot", translation="абрикос")
+
+        response = self.client.get("/api/word-suggestions/?q=app")
+
+        self.assertEqual(response.status_code, 200)
+        suggestions = response.json()["suggestions"]
+        self.assertEqual([item["word"] for item in suggestions], ["apple", "application"])
+        self.assertTrue(all(item["source"] == "saved" for item in suggestions))
+        self.assertEqual([item["pos"] for item in suggestions], ["noun", "noun"])
+
+    @patch.dict("os.environ", {"GROQ_API_KEY": "test-key"})
+    @patch("dictionary.api.groq_chat_json")
+    def test_word_suggestions_add_ai_completions(self, mock_groq):
+        self.create_word(term="apple")
+        mock_groq.return_value = {
+            "suggestions": [
+                {"word": "apple", "pos": "noun"},
+                {"word": "application", "pos": "noun"},
+                {"word": "app store", "pos": "phrase"},
+                {"word": "banana", "pos": "noun"},
+                {"word": "app\nbad", "pos": "other"},
+            ]
+        }
+
+        response = self.client.get("/api/word-suggestions/?q=app")
+
+        self.assertEqual(response.status_code, 200)
+        suggestions = response.json()["suggestions"]
+        self.assertEqual([item["word"] for item in suggestions], ["apple", "application", "app store"])
+        self.assertEqual([item["source"] for item in suggestions], ["saved", "ai", "ai"])
+        self.assertEqual([item["pos"] for item in suggestions], ["noun", "noun", "phrase"])
+
+    @patch.dict("os.environ", {"GROQ_API_KEY": "test-key"})
+    @patch("dictionary.api.groq_chat_json")
+    def test_word_suggestions_can_return_spelling_fixes(self, mock_groq):
+        mock_groq.return_value = {
+            "suggestions": [
+                {"word": "apple", "pos": "noun"},
+                {"word": "apply", "pos": "verb"},
+            ]
+        }
+
+        response = self.client.get("/api/word-suggestions/?q=applr")
+
+        self.assertEqual(response.status_code, 200)
+        suggestions = response.json()["suggestions"]
+        self.assertEqual([item["word"] for item in suggestions], ["apple", "apply"])
+        self.assertEqual([item["source"] for item in suggestions], ["fix", "fix"])
+        self.assertEqual([item["pos"] for item in suggestions], ["noun", "verb"])
+
+    @patch("dictionary.api.groq_chat_json")
+    def test_ai_lookup_rejects_misspelled_word_with_correction(self, mock_groq):
+        mock_groq.return_value = {
+            "is_valid": False,
+            "correction": "apple",
+            "translation": "",
+            "pos": "noun",
+            "example": "",
+        }
+
+        response = self.post_json("/api/ai-lookup/", {"word": "applr"})
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["correction"], "apple")
+        self.assertEqual(response.json()["pos"], "noun")
+        self.assertEqual(response.json()["suggestions"], [{"word": "apple", "source": "fix", "pos": "noun"}])
+
     def test_quiz_generation_is_user_scoped(self):
         for idx in range(5):
             self.create_word(term=f"mine-{idx}", translation=f"перевод-{idx}")

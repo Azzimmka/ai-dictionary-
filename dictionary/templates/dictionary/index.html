@@ -81,12 +81,25 @@
       position: relative;
       isolation: isolate;
       overflow: hidden;
+      color: #111827;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.98), transparent 28%),
+        linear-gradient(135deg, #ffffff 0%, #f8fafc 34%, #dbeafe 68%, #f5f3ff 100%);
+      box-shadow:
+        0 16px 40px rgba(15, 23, 42, 0.12),
+        0 0 0 1px rgba(148, 163, 184, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    }
+
+    .dark .ai-quiz-button {
       color: white;
       background:
-        linear-gradient(135deg, #4f46e5 0%, #7c3aed 44%, #0891b2 100%);
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.13), transparent 27%),
+        linear-gradient(135deg, #020617 0%, #050505 42%, #111827 72%, #020617 100%);
       box-shadow:
-        0 12px 30px rgba(79, 70, 229, 0.28),
-        inset 0 1px 0 rgba(255, 255, 255, 0.24);
+        0 18px 48px rgba(0, 0, 0, 0.48),
+        0 0 0 1px rgba(255, 255, 255, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
 
     .ai-quiz-button::before {
@@ -97,12 +110,22 @@
       background:
         linear-gradient(115deg,
           transparent 35%,
-          rgba(255, 255, 255, 0.18) 45%,
-          rgba(255, 255, 255, 0.42) 50%,
-          rgba(255, 255, 255, 0.16) 55%,
+          rgba(14, 165, 233, 0.04) 43%,
+          rgba(255, 255, 255, 0.72) 50%,
+          rgba(124, 58, 237, 0.08) 57%,
           transparent 65%);
       transform: translateX(-45%) rotate(8deg);
       animation: aiQuizShine 4.8s ease-in-out infinite;
+    }
+
+    .dark .ai-quiz-button::before {
+      background:
+        linear-gradient(115deg,
+          transparent 35%,
+          rgba(255, 255, 255, 0.08) 44%,
+          rgba(255, 255, 255, 0.34) 50%,
+          rgba(99, 102, 241, 0.11) 56%,
+          transparent 65%);
     }
 
     .ai-quiz-button::after {
@@ -112,24 +135,44 @@
       z-index: -2;
       border-radius: inherit;
       background:
-        radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.28), transparent 28%),
-        linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 42%);
+        radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.6), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.45), transparent 42%);
       opacity: 0.8;
+    }
+
+    .dark .ai-quiz-button::after {
+      background:
+        radial-gradient(circle at 30% 15%, rgba(255, 255, 255, 0.13), transparent 28%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%);
+      opacity: 0.95;
     }
 
     .ai-quiz-button:hover {
       transform: translateY(-1px) scale(1.01);
       box-shadow:
-        0 18px 42px rgba(79, 70, 229, 0.38),
-        0 0 0 1px rgba(255, 255, 255, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.28);
+        0 22px 52px rgba(15, 23, 42, 0.16),
+        0 0 0 1px rgba(99, 102, 241, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+    }
+
+    .dark .ai-quiz-button:hover {
+      box-shadow:
+        0 22px 56px rgba(0, 0, 0, 0.58),
+        0 0 0 1px rgba(255, 255, 255, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
     }
 
     .ai-quiz-button:active {
       transform: translateY(1px) scale(0.985);
       box-shadow:
-        0 8px 20px rgba(79, 70, 229, 0.24),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        0 8px 22px rgba(15, 23, 42, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    .dark .ai-quiz-button:active {
+      box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
     }
 
     @keyframes aiQuizShine {
@@ -185,7 +228,7 @@
           <h1 class="text-2xl font-bold tracking-tight">Мой словарь</h1>
           {% if user.is_authenticated %}
           <div class="flex items-center gap-2 text-xs text-gray-500 font-medium mt-1">
-            <span>{{ user.username }}</span>
+            <a href="{% url 'profile' %}" class="hover:text-gray-900 dark:hover:text-white transition-colors">{{ user.username }}</a>
             <span class="w-1 h-1 rounded-full bg-gray-300"></span>
             <form action="{% url 'logout' %}" method="post" class="inline">
               {% csrf_token %}
@@ -197,6 +240,16 @@
       </div>
 
       <div class="flex items-center gap-3">
+        <a href="{% url 'profile' %}"
+          class="h-10 px-3 sm:px-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-center gap-2 text-gray-700 dark:text-gray-200 transition-all shadow-sm active:scale-95 hover:bg-gray-50 dark:hover:bg-gray-800"
+          title="Профиль" aria-label="Профиль">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21a8 8 0 0 0-16 0"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+          <span class="hidden sm:inline text-xs font-black uppercase tracking-wide">Профиль</span>
+        </a>
         <button id="darkModeBtn"
           class="h-10 w-10 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center justify-center transition-all shadow-sm active:scale-95">
           <img src="{% static 'dictionary/moon.svg' %}" class="w-5 h-5 dark:hidden" alt="Dark">
@@ -281,11 +334,16 @@
             <div class="relative">
               <input id="wordInput" type="text" placeholder="Word"
                 class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 py-4 pr-10 text-lg font-medium placeholder-gray-400 focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-600 outline-none transition-shadow"
-                required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+                required autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+                aria-autocomplete="list" aria-expanded="false" aria-controls="wordSuggestions">
 
               <!-- Simple AI Loader -->
               <div id="aiLoading" class="hidden absolute right-3 top-1/2 -translate-y-1/2">
                 <div class="animate-spin rounded-full h-4 w-4 border-2 border-indigo-500 border-t-transparent"></div>
+              </div>
+
+              <div id="wordSuggestions" role="listbox"
+                class="hidden absolute top-full left-0 right-0 mt-2 overflow-hidden rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-2xl z-50 max-h-64 overflow-y-auto">
               </div>
             </div>
           </div>
@@ -335,17 +393,9 @@
         </div>
       </form>
 
-      <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button id="reviewModeBtn" type="button"
-          class="rounded-2xl bg-gray-900 dark:bg-white px-5 py-3 text-sm font-bold text-white dark:text-gray-900 active:scale-[0.98] transition-all">
-          Повторение
-        </button>
-        <button id="bulkImportBtn" type="button"
-          class="rounded-2xl bg-gray-100 dark:bg-gray-800 px-5 py-3 text-sm font-bold text-gray-800 dark:text-gray-100 active:scale-[0.98] transition-all">
-          Импорт списком
-        </button>
+      <div class="mt-6">
         <button id="quizModeBtn" type="button"
-          class="ai-quiz-button rounded-2xl px-5 py-3 text-sm font-black tracking-wide transition-all duration-200">
+          class="ai-quiz-button w-full rounded-2xl px-5 py-4 text-sm font-black tracking-wide transition-all duration-200">
           <span class="relative z-10">AI Quiz</span>
         </button>
       </div>
@@ -513,11 +563,10 @@
     // --- Elements ---
     const entryForm = document.getElementById('entryForm');
     const wordInput = document.getElementById('wordInput');
+    const wordSuggestions = document.getElementById('wordSuggestions');
     const exampleInput = document.getElementById('exampleInput');
     // const posSelect = document.getElementById('posSelect'); // Removed
     const ruInput = document.getElementById('ruInput');
-    const reviewModeBtn = document.getElementById('reviewModeBtn');
-    const bulkImportBtn = document.getElementById('bulkImportBtn');
     const quizModeBtn = document.getElementById('quizModeBtn');
 
     /* --- AI Logic Implementation --- */
@@ -527,6 +576,10 @@
     const aiLoading = document.getElementById('aiLoading');
     const submitBtn = entryForm.querySelector('button[type="submit"]'); // Define submit button dynamically
     let aiDebounceTimer;
+    let suggestionDebounceTimer;
+    let suggestionAbortController = null;
+    let suggestionItems = [];
+    let activeSuggestionIndex = -1;
 
     // Toggle Handler
     if (aiToggleBtn) {
@@ -588,9 +641,11 @@
 
     // Input Handler
     wordInput.addEventListener('input', (e) => {
+      const text = e.target.value.trim();
+      updateWordSuggestions(text);
+
       if (!isAiMode) return;
 
-      const text = e.target.value.trim();
       clearTimeout(aiDebounceTimer);
 
       if (text.length < 2) return;
@@ -607,6 +662,23 @@
       }, 1100);
     });
 
+    wordInput.addEventListener('keydown', (e) => {
+      if (wordSuggestions.classList.contains('hidden') || !suggestionItems.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveSuggestion((activeSuggestionIndex + 1) % suggestionItems.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveSuggestion((activeSuggestionIndex - 1 + suggestionItems.length) % suggestionItems.length);
+      } else if (e.key === 'Enter' && activeSuggestionIndex >= 0) {
+        e.preventDefault();
+        applyWordSuggestion(suggestionItems[activeSuggestionIndex].word);
+      } else if (e.key === 'Escape') {
+        hideWordSuggestions();
+      }
+    });
+
     async function fetchAiData(word) {
       aiLoading.classList.remove('hidden');
 
@@ -620,9 +692,25 @@
           body: JSON.stringify({ word: word })
         });
 
-        if (!response.ok) throw new Error('Network response was not ok');
+        const data = await response.json().catch(() => ({}));
 
-        const data = await response.json();
+        if (!response.ok) {
+          if (response.status === 422) {
+            const correctionItems = (data.suggestions || [])
+              .concat(data.correction ? [data.correction] : [])
+              .map(item => (
+                typeof item === 'string'
+                  ? { word: item, source: 'fix', pos: data.pos || 'other' }
+                  : { word: item.word, source: item.source || 'fix', pos: item.pos || data.pos || 'other' }
+              ));
+            renderWordSuggestions(mergeWordSuggestions(word, correctionItems));
+            showToast('Выбери правильное написание');
+            return;
+          }
+          throw new Error('Network response was not ok');
+        }
+
+        if (wordInput.value.trim() !== word) return;
 
         if (data.error) {
           console.warn('AI Error:', data.error);
@@ -716,6 +804,166 @@
         '"': '&quot;',
         "'": '&#39;',
       }[ch]));
+    }
+
+    function normalizeSuggestionWord(value) {
+      return String(value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function normalizeSuggestionPos(value) {
+      const normalized = String(value || 'other').toLowerCase().trim();
+      if (['noun', 'verb', 'adj', 'adv', 'phrase', 'other'].includes(normalized)) return normalized;
+      if (normalized === 'adjective') return 'adj';
+      if (normalized === 'adverb') return 'adv';
+      return 'other';
+    }
+
+    function getSuggestionPosLabel(pos) {
+      return {
+        noun: 'noun',
+        verb: 'verb',
+        adj: 'adj',
+        adv: 'adv',
+        phrase: 'phrase',
+        other: 'other',
+      }[normalizeSuggestionPos(pos)];
+    }
+
+    function getSuggestionPosClass(pos) {
+      return {
+        noun: 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-400/20',
+        verb: 'bg-red-500/15 text-red-300 ring-1 ring-red-400/20',
+        adj: 'bg-violet-500/15 text-violet-300 ring-1 ring-violet-400/20',
+        adv: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-400/20',
+        phrase: 'bg-teal-500/15 text-teal-300 ring-1 ring-teal-400/20',
+        other: 'bg-gray-500/15 text-gray-300 ring-1 ring-gray-400/20',
+      }[normalizeSuggestionPos(pos)];
+    }
+
+    function mergeWordSuggestions(query, ...groups) {
+      const normalizedQuery = query.toLowerCase();
+      const seen = new Set();
+      const merged = [];
+
+      groups.flat().forEach((item) => {
+        const word = normalizeSuggestionWord(item.word || item);
+        const key = word.toLowerCase();
+        const isCorrection = item.source === 'fix';
+        if (!word || key === normalizedQuery || (!key.startsWith(normalizedQuery) && !isCorrection) || seen.has(key)) return;
+        seen.add(key);
+        merged.push({ word, source: item.source || 'saved', pos: normalizeSuggestionPos(item.pos) });
+      });
+
+      return merged.slice(0, 8);
+    }
+
+    function getLocalWordSuggestions(query) {
+      const normalizedQuery = query.toLowerCase();
+      return localWords
+        .map(item => ({ word: item.word || item.term || '', pos: item.pos }))
+        .filter(item => item.word)
+        .filter(item => item.word.toLowerCase().startsWith(normalizedQuery))
+        .map(item => ({ word: item.word, source: 'saved', pos: item.pos }));
+    }
+
+    function renderWordSuggestions(items) {
+      suggestionItems = items;
+      activeSuggestionIndex = -1;
+      wordSuggestions.innerHTML = '';
+
+      if (!items.length) {
+        hideWordSuggestions();
+        return;
+      }
+
+      items.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.suggestionIndex = index;
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', 'false');
+        button.className = 'flex w-full items-center justify-between gap-3 px-5 py-3 text-left text-sm font-bold text-gray-800 dark:text-gray-100 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800';
+
+        const word = document.createElement('span');
+        word.className = 'min-w-0 truncate';
+        word.textContent = item.word;
+
+        const badges = document.createElement('span');
+        badges.className = 'flex shrink-0 items-center gap-1.5';
+
+        const pos = document.createElement('span');
+        pos.className = `rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${getSuggestionPosClass(item.pos)}`;
+        pos.textContent = getSuggestionPosLabel(item.pos);
+
+        const source = document.createElement('span');
+        source.className = 'rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-gray-400';
+        source.textContent = item.source === 'fix' ? 'Исправить' : (item.source === 'ai' ? 'AI' : 'Моё');
+
+        badges.append(pos, source);
+        button.append(word, badges);
+        button.addEventListener('mouseenter', () => setActiveSuggestion(index));
+        button.addEventListener('mousedown', (e) => e.preventDefault());
+        button.addEventListener('click', () => applyWordSuggestion(item.word));
+        wordSuggestions.appendChild(button);
+      });
+
+      wordSuggestions.classList.remove('hidden');
+      wordInput.setAttribute('aria-expanded', 'true');
+    }
+
+    function setActiveSuggestion(index) {
+      activeSuggestionIndex = index;
+      wordSuggestions.querySelectorAll('[data-suggestion-index]').forEach((button, buttonIndex) => {
+        const isActive = buttonIndex === activeSuggestionIndex;
+        button.setAttribute('aria-selected', String(isActive));
+        button.classList.toggle('bg-gray-50', isActive);
+        button.classList.toggle('dark:bg-gray-800', isActive);
+      });
+    }
+
+    function hideWordSuggestions() {
+      suggestionItems = [];
+      activeSuggestionIndex = -1;
+      wordSuggestions.classList.add('hidden');
+      wordInput.setAttribute('aria-expanded', 'false');
+    }
+
+    function applyWordSuggestion(word) {
+      wordInput.value = word;
+      hideWordSuggestions();
+      clearTimeout(aiDebounceTimer);
+      clearTimeout(suggestionDebounceTimer);
+      if (suggestionAbortController) suggestionAbortController.abort();
+      if (isAiMode) fetchAiData(word);
+      wordInput.focus();
+    }
+
+    function updateWordSuggestions(query) {
+      clearTimeout(suggestionDebounceTimer);
+      if (suggestionAbortController) suggestionAbortController.abort();
+
+      if (query.length < 2) {
+        hideWordSuggestions();
+        return;
+      }
+
+      const localSuggestions = mergeWordSuggestions(query, getLocalWordSuggestions(query));
+      renderWordSuggestions(localSuggestions);
+
+      suggestionDebounceTimer = setTimeout(async () => {
+        suggestionAbortController = new AbortController();
+        try {
+          const response = await fetch(`/api/word-suggestions/?q=${encodeURIComponent(query)}`, {
+            signal: suggestionAbortController.signal,
+          });
+          if (!response.ok) throw new Error();
+          const data = await response.json();
+          const merged = mergeWordSuggestions(query, localSuggestions, data.suggestions || []);
+          if (wordInput.value.trim() === query) renderWordSuggestions(merged);
+        } catch (error) {
+          if (error.name !== 'AbortError') renderWordSuggestions(localSuggestions);
+        }
+      }, 350);
     }
 
     function upsertLocalWord(word) {
@@ -1369,6 +1617,9 @@
       if (!categoryTrigger.contains(e.target) && !categoryList.contains(e.target)) {
         categoryList.classList.add('hidden');
       }
+      if (!wordInput.contains(e.target) && !wordSuggestions.contains(e.target)) {
+        hideWordSuggestions();
+      }
     });
 
     // Category Events
@@ -1851,6 +2102,7 @@
           });
           renderCards(localWords);
           entryForm.reset();
+          hideWordSuggestions();
           // Reset custom POS
           selectedPosValue = '';
           posLabel.textContent = '— Выбрать —';
@@ -1895,8 +2147,6 @@
 
     // Search
     searchInput.addEventListener('input', () => renderCards(localWords));
-    reviewModeBtn.addEventListener('click', openReviewSession);
-    bulkImportBtn.addEventListener('click', openBulkImportModal);
     quizModeBtn.addEventListener('click', openQuizSession);
 
     // Dark Mode Toggle

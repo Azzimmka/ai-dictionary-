@@ -21,6 +21,7 @@ GROQ_TTS_MAX_CHARS = 200
 GROQ_API_BASE = "https://api.groq.com/openai/v1"
 BULK_IMPORT_LIMIT = 30
 QUIZ_MIN_WORDS = 5
+WORD_SUGGESTION_LIMIT = 8
 
 
 def get_groq_key():
@@ -46,6 +47,44 @@ def normalize_pos(pos):
 
 def normalize_text(value):
     return re.sub(r"[^\w]+", " ", str(value or "").lower(), flags=re.UNICODE).strip()
+
+
+def clean_word_suggestion(value, prefix, require_prefix=True):
+    raw = str(value or "")
+    if "\n" in raw or "\r" in raw:
+        return ""
+    suggestion = re.sub(r"\s+", " ", raw).strip()
+    if not suggestion or len(suggestion) > 80:
+        return ""
+    if require_prefix and not suggestion.lower().startswith(prefix.lower()):
+        return ""
+    if not require_prefix and suggestion[0].lower() != prefix[0].lower():
+        return ""
+    if not re.fullmatch(r"[A-Za-z][A-Za-z '\-]*", suggestion):
+        return ""
+    return suggestion
+
+
+def get_suggestion_word(value):
+    if isinstance(value, dict):
+        return value.get("word") or value.get("term") or value.get("suggestion") or ""
+    return value
+
+
+def get_suggestion_pos(value, fallback="other"):
+    if isinstance(value, dict):
+        return normalize_pos(value.get("pos") or value.get("part_of_speech") or fallback)
+    return normalize_pos(fallback)
+
+
+def add_unique_suggestion(suggestions, seen, value, source, prefix, require_prefix=True, fallback_pos="other"):
+    raw_word = get_suggestion_word(value)
+    cleaned = clean_word_suggestion(raw_word, prefix, require_prefix=require_prefix)
+    key = cleaned.lower()
+    if not cleaned or key in seen:
+        return
+    suggestions.append({"word": cleaned, "source": source, "pos": get_suggestion_pos(value, fallback_pos)})
+    seen.add(key)
 
 
 def word_to_dict(word):
@@ -184,6 +223,62 @@ def api_words_list(request):
 
 
 @login_required
+@require_http_methods(["GET"])
+def api_word_suggestions(request):
+    prefix = str(request.GET.get("q") or "").strip()
+    if len(prefix) < 2:
+        return JsonResponse({"suggestions": []})
+
+    prefix = prefix[:40]
+    suggestions = []
+    seen = set()
+
+    saved_terms = (
+        Word.objects.filter(user=request.user, term__istartswith=prefix)
+        .order_by("term")
+        .values("term", "pos")[:WORD_SUGGESTION_LIMIT]
+    )
+    for term in saved_terms:
+        add_unique_suggestion(
+            suggestions,
+            seen,
+            {"word": term["term"], "pos": term["pos"]},
+            "saved",
+            prefix,
+        )
+
+    if len(suggestions) < WORD_SUGGESTION_LIMIT and get_groq_key():
+        prompt = (
+            f"Complete or correct this English word or short phrase draft: {prefix!r}.\n"
+            "Return JSON ONLY as {\"suggestions\": [{\"word\": \"...\", \"pos\": \"noun\"}]} with up to "
+            f"{WORD_SUGGESTION_LIMIT - len(suggestions)} common English completions.\n"
+            "If the draft appears misspelled, include the most likely corrected English words first. "
+            "If the draft is a valid prefix, include likely completions first. "
+            "For pos, use exactly one of: noun, verb, adj, adv, phrase, other. "
+            "Every suggestion must be useful for an English learner and contain only letters, spaces, apostrophes, or hyphens."
+        )
+        try:
+            result = groq_chat_json(
+                prompt,
+                (
+                    "You suggest concise English dictionary headwords and short phrases. "
+                    "Return a single raw JSON object only."
+                ),
+                timeout=8,
+            )
+            for item in result.get("suggestions", []):
+                if len(suggestions) >= WORD_SUGGESTION_LIMIT:
+                    break
+                item_word = get_suggestion_word(item)
+                source = "ai" if str(item_word).lower().startswith(prefix.lower()) else "fix"
+                add_unique_suggestion(suggestions, seen, item, source, prefix, require_prefix=False)
+        except Exception:
+            pass
+
+    return JsonResponse({"suggestions": suggestions})
+
+
+@login_required
 @require_http_methods(["POST"])
 def api_word_create(request):
     try:
@@ -266,12 +361,16 @@ def api_ai_lookup(request):
             return JsonResponse({"error": "Word is required"}, status=400)
 
         prompt = (
-            f"Translate and explain the English word or phrase: {word!r}.\n"
+            f"Check, translate, and explain the English word or phrase exactly as typed: {word!r}.\n"
             "Target learner language: Russian.\n"
             "Return JSON ONLY with these keys:\n"
+            "- \"is_valid\": true only if the typed text is a correctly spelled common English word or phrase.\n"
+            "- \"correction\": the corrected English word or phrase if the typed text is misspelled, otherwise empty string.\n"
             "- \"translation\": Russian translation, with 2-3 common meanings if useful, comma separated.\n"
             "- \"pos\": exactly one of: noun, verb, adj, adv, phrase, other.\n"
             "- \"example\": one short natural English sentence using the word.\n"
+            "If the typed text is misspelled, set is_valid to false, put the correction in correction, "
+            "and leave translation and example as empty strings. Do not silently translate corrected words.\n"
             "Do not include markdown, comments, citations, or backticks."
         )
         result = groq_chat_json(
@@ -282,6 +381,18 @@ def api_ai_lookup(request):
             ),
             timeout=12,
         )
+        if result.get("is_valid") is False:
+            correction = clean_word_suggestion(result.get("correction"), word, require_prefix=False)
+            correction_pos = normalize_pos(result.get("pos"))
+            return JsonResponse(
+                {
+                    "error": "Word spelling needs correction",
+                    "correction": correction,
+                    "pos": correction_pos,
+                    "suggestions": [{"word": correction, "source": "fix", "pos": correction_pos}] if correction else [],
+                },
+                status=422,
+            )
         result["pos"] = normalize_pos(result.get("pos"))
         return JsonResponse(result)
     except RuntimeError as e:
