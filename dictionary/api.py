@@ -188,20 +188,28 @@ def api_words_list(request):
 def api_word_create(request):
     try:
         data = json.loads(request.body)
-        term = data.get("word", "").strip()
-        translation = data.get("ru", "").strip()
+        term = str(data.get("word") or "").strip()
+        translation = str(data.get("ru") or "").strip()
+        category_id = data.get("category_id") or None
 
         if not term:
             return JsonResponse({"error": "Word is required"}, status=400)
+        if category_id:
+            try:
+                category = Category.objects.get(pk=int(category_id), user=request.user)
+            except (TypeError, ValueError, Category.DoesNotExist):
+                return JsonResponse({"error": "Invalid category"}, status=400)
+        else:
+            category = None
 
         new_word = Word.objects.create(
             user=request.user,
-            term=term,
-            translation=translation,
-            example=data.get("example", ""),
+            term=term[:255],
+            translation=translation[:255],
+            example=str(data.get("example") or ""),
             pos=normalize_pos(data.get("pos", "other")),
             is_learned=False,
-            category_id=data.get("category_id") or None,
+            category=category,
         )
         payload = word_to_dict(new_word)
         payload["status"] = "success"

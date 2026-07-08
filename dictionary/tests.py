@@ -6,7 +6,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.utils import timezone
 
-from .models import Word
+from .models import Category, Word
 
 
 class LearningApiTests(TestCase):
@@ -67,6 +67,21 @@ class LearningApiTests(TestCase):
         self.assertEqual(len(data["created"]), 2)
         self.assertEqual(data["skipped"], ["apple"])
         self.assertTrue(Word.objects.filter(user=self.user, term="run").exists())
+
+    def test_word_create_truncates_long_translation(self):
+        long_translation = "а" * 300
+        response = self.post_json(
+            "/api/words/add/",
+            {"word": "men", "ru": long_translation, "example": None, "category_id": None},
+        )
+        self.assertEqual(response.status_code, 201)
+        word = Word.objects.get(user=self.user, term="men")
+        self.assertEqual(len(word.translation), 255)
+
+    def test_word_create_rejects_invalid_category(self):
+        other_category = Category.objects.create(user=self.other, name="Other category")
+        response = self.post_json("/api/words/add/", {"word": "men", "ru": "мужчины", "category_id": other_category.id})
+        self.assertEqual(response.status_code, 400)
 
     def test_quiz_generation_is_user_scoped(self):
         for idx in range(5):
