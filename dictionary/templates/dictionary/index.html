@@ -1389,6 +1389,7 @@
       let maxRecordTimer = null;
       let finished = false;
       let cancelled = false;
+      let latestSpeechTranscript = '';
       const status = document.getElementById('pronunciationStatus');
       const startBtn = document.getElementById('pronunciationStart');
       const listenBtn = document.getElementById('pronunciationListen');
@@ -1455,6 +1456,7 @@
           chunks = [];
           finished = false;
           cancelled = false;
+          latestSpeechTranscript = '';
           renderLiveMatch('');
           recorder = new MediaRecorder(stream);
           recorder.ondataavailable = (event) => {
@@ -1468,6 +1470,7 @@
             const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
             const form = new FormData();
             form.append('word_id', card.id);
+            form.append('browser_transcript', latestSpeechTranscript);
             form.append('audio', blob, 'speech.webm');
             status.textContent = 'Проверяю произношение...';
 
@@ -1479,7 +1482,11 @@
               });
               const data = await res.json();
               if (!res.ok) throw new Error(data.error || 'Pronunciation check failed');
-              renderLiveMatch(data.transcript || '');
+              if (data.status === 'no_speech') {
+                renderLiveMatch('');
+              } else {
+                renderLiveMatch(data.transcript || '');
+              }
               status.innerHTML = `<span class="font-bold">${escapeHtml(data.feedback)}</span><br><span class="text-xs">Распознано: ${escapeHtml(data.transcript || '—')}</span>`;
             } catch (error) {
               status.textContent = error.message || 'Не удалось проверить произношение';
@@ -1502,6 +1509,7 @@
                 .map(result => result[0]?.transcript || '')
                 .join(' ')
                 .trim();
+              latestSpeechTranscript = transcript;
               renderLiveMatch(transcript);
               if (autoStopTimer) clearTimeout(autoStopTimer);
               autoStopTimer = setTimeout(stopRecording, 1200);
@@ -1510,12 +1518,14 @@
               status.textContent = 'Live-распознавание не сработало, но аудио все равно проверится.';
             };
             recognition.onend = () => {
-              autoStopTimer = setTimeout(stopRecording, 500);
+              if (latestSpeechTranscript) {
+                autoStopTimer = setTimeout(stopRecording, 500);
+              }
             };
             recognition.start();
           }
 
-          maxRecordTimer = setTimeout(stopRecording, SpeechRecognition ? 8000 : 4500);
+          maxRecordTimer = setTimeout(stopRecording, SpeechRecognition ? 6500 : 4500);
         } catch {
           status.textContent = 'Браузер не дал доступ к микрофону.';
           startBtn.disabled = false;

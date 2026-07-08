@@ -22,6 +22,20 @@ GROQ_API_BASE = "https://api.groq.com/openai/v1"
 BULK_IMPORT_LIMIT = 30
 QUIZ_MIN_WORDS = 5
 WORD_SUGGESTION_LIMIT = 8
+PRONUNCIATION_STATUS_SCORE = {
+    "no_speech": 0,
+    "retry": 1,
+    "close": 2,
+    "correct": 3,
+}
+COMMON_STT_FALSE_TRANSCRIPTS = {
+    "thank you",
+    "thanks",
+    "thanks for watching",
+    "thank you for watching",
+    "bye",
+    "goodbye",
+}
 
 
 def get_groq_key():
@@ -742,7 +756,9 @@ def pronunciation_status(target, transcript):
     target_norm = normalize_text(target)
     transcript_norm = normalize_text(transcript)
     if not target_norm or not transcript_norm:
-        return "retry"
+        return "no_speech"
+    if transcript_norm in COMMON_STT_FALSE_TRANSCRIPTS and target_norm not in transcript_norm.split():
+        return "no_speech"
     if target_norm == transcript_norm:
         return "correct"
     target_parts = set(target_norm.split())
@@ -752,11 +768,24 @@ def pronunciation_status(target, transcript):
     return "retry"
 
 
+def best_pronunciation_result(target, *transcripts):
+    best_status = "no_speech"
+    best_transcript = ""
+    for transcript in transcripts:
+        cleaned = str(transcript or "").strip()
+        status = pronunciation_status(target, cleaned)
+        if PRONUNCIATION_STATUS_SCORE[status] > PRONUNCIATION_STATUS_SCORE[best_status]:
+            best_status = status
+            best_transcript = cleaned
+    return best_status, best_transcript
+
+
 @login_required
 @require_http_methods(["POST"])
 def api_pronunciation_check(request):
     audio_file = request.FILES.get("audio")
     target = request.POST.get("target", "").strip()
+    browser_transcript = request.POST.get("browser_transcript", "").strip()
     word_id = request.POST.get("word_id")
 
     if word_id:
@@ -779,20 +808,31 @@ def api_pronunciation_check(request):
         response = requests.post(
             f"{GROQ_API_BASE}/audio/transcriptions",
             headers={"Authorization": f"Bearer {groq_key}"},
-            data={"model": GROQ_STT_MODEL, "language": "en"},
+            data={
+                "model": GROQ_STT_MODEL,
+                "language": "en",
+                "prompt": f"The speaker is pronouncing this English word or phrase: {target}. Transcribe only the spoken English.",
+            },
             files={"file": (audio_file.name or "speech.webm", audio_file.read(), audio_file.content_type or "audio/webm")},
             timeout=30,
         )
         if response.status_code != 200:
             return JsonResponse({"error": "Speech provider error"}, status=500)
 
-        transcript = response.json().get("text", "").strip()
-        status = pronunciation_status(target, transcript)
+        provider_transcript = response.json().get("text", "").strip()
+        status, transcript = best_pronunciation_result(target, provider_transcript, browser_transcript)
         feedback = {
             "correct": "Отлично, звучит правильно.",
             "close": "Почти правильно, попробуй еще раз чуть четче.",
+            "no_speech": "Я не услышал это слово. Нажми запись и произнеси слово один раз.",
             "retry": "Пока не похоже, послушай слово и повтори еще раз.",
         }[status]
-        return JsonResponse({"status": status, "transcript": transcript, "feedback": feedback})
+        return JsonResponse({
+            "status": status,
+            "transcript": transcript,
+            "provider_transcript": provider_transcript,
+            "browser_transcript": browser_transcript,
+            "feedback": feedback,
+        })
     except requests.RequestException:
         return JsonResponse({"error": "Speech provider unavailable"}, status=502)

@@ -249,3 +249,36 @@ class LearningApiTests(TestCase):
         response = self.client.post("/api/pronunciation/check/", data={"word_id": word.id, "audio": audio})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["status"], "correct")
+
+    @patch.dict("os.environ", {"GROQ_API_KEY": "test-key"})
+    @patch("dictionary.api.requests.post")
+    def test_pronunciation_rejects_common_stt_hallucination(self, mock_post):
+        word = self.create_word(term="fear")
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"text": "Thank you."}
+        mock_post.return_value = mock_response
+        audio = SimpleUploadedFile("speech.webm", b"audio", content_type="audio/webm")
+
+        response = self.client.post("/api/pronunciation/check/", data={"word_id": word.id, "audio": audio})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "no_speech")
+        self.assertEqual(response.json()["transcript"], "")
+
+    @patch.dict("os.environ", {"GROQ_API_KEY": "test-key"})
+    @patch("dictionary.api.requests.post")
+    def test_pronunciation_uses_browser_transcript_when_better(self, mock_post):
+        word = self.create_word(term="fear")
+        mock_response = Mock(status_code=200)
+        mock_response.json.return_value = {"text": "Thank you."}
+        mock_post.return_value = mock_response
+        audio = SimpleUploadedFile("speech.webm", b"audio", content_type="audio/webm")
+
+        response = self.client.post(
+            "/api/pronunciation/check/",
+            data={"word_id": word.id, "browser_transcript": "fear", "audio": audio},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "correct")
+        self.assertEqual(response.json()["transcript"], "fear")
